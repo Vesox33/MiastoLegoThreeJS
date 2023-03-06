@@ -1,5 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.125.0/build/three.module.js';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/controls/OrbitControls.js';
+import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/OBJLoader.js';
+import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/MTLLoader.js';
 
 class BasicWorldDemo{
     constructor(){
@@ -23,7 +25,7 @@ class BasicWorldDemo{
         const fov = 60;
         const aspect = 16/9;
         const near = 1.0;
-        const far = 1000.0;
+        const far = 10000.0;
         this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
         this._camera.position.set(100, 100, 100);
         
@@ -42,32 +44,52 @@ class BasicWorldDemo{
         this._scene.add(light);
         
         //---draw---
-       	const DROGA_GEO = new THREE.BoxGeometry( 100, 0.5, 100 );
-        const DROGA_MAT = new THREE.MeshToonMaterial( {
-			color: 0x040404,
-			gradientMap: THREE.threeTone,
-            //wireframe: true
-			} );
-        const DROGA = new THREE.Mesh( DROGA_GEO, DROGA_MAT );
-		this._scene.add( DROGA );
-		
-		const CHODNIK_GEO = new THREE.BoxGeometry( 80, 1, 80 );
-        const CHODNIK_MAT = new THREE.MeshToonMaterial( {
-            color: 0x525252,
-            gradientMap: THREE.threeTone,
-            //wireframe: true
-            } );
-        const CHODNIK = new THREE.Mesh( CHODNIK_GEO, CHODNIK_MAT );
-		this._scene.add( CHODNIK );
-		
-		const TRAWA_GEO = new THREE.BoxGeometry( 70, 1.5, 70 );
-        const TRAWA_MAT = new THREE.MeshToonMaterial( {
-            color: 0x008F00,
-            gradientMap: THREE.threeTone,
-            //wireframe: true
-            } );
-        const TRAWA = new THREE.Mesh( TRAWA_GEO, TRAWA_MAT );
-		this._scene.add( TRAWA );
+        const MtlLoader = new MTLLoader();
+        const ObjLoader = new OBJLoader();
+        
+        const Ground = new THREE.Group();
+        
+        MtlLoader.load('./models/plytka_test.mtl', function (materials) {
+            materials.preload();
+            ObjLoader.setMaterials(materials);
+            ObjLoader.load('./models/plytka_test.obj', function (object) {
+                
+                const instanceCount = 1000;
+                const mesh = object.children[0];
+                const instancedMesh = new THREE.InstancedMesh(mesh.geometry, mesh.material, instanceCount);
+                
+                const Object_emulation = new THREE.Object3D();
+                
+                Object_emulation.rotateX(-Math.PI/2);
+                
+                let i=0;
+                for(var x=0; x<10; x++){
+                    for(var z=0; z<10; z++){
+                        Object_emulation.position.x = 640*x;
+                        Object_emulation.position.z = 640*z;
+                        
+                        Object_emulation.updateMatrix();
+                        instancedMesh.setMatrixAt( i, Object_emulation.matrix );
+                        i++;
+                }}
+                    Ground.add(instancedMesh);
+                    
+                /* do testow, zobacz jak wydajnosc moze sie psuc
+                for(var x=0; x<instanceCount ; x++)
+                    for(var z=0; z<instanceCount ; z++){
+                        mesh.position.x = 640*x ;
+                        mesh.position.z = 640*z ;
+                        //Ground.add(mesh.clone());
+                        
+                    }*/
+                
+            });
+            
+            
+        });
+        
+        this._scene.add( Ground );
+        
         //-------
         
         
@@ -75,6 +97,7 @@ class BasicWorldDemo{
         
         
     }
+    
     
     _OnWindowResize() {
         this._camera.aspect = window.innerWidth / window.innerHeight;
@@ -92,3 +115,4 @@ class BasicWorldDemo{
 }
 
 new BasicWorldDemo;
+
