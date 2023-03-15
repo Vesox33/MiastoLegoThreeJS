@@ -1,11 +1,15 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.125.0/build/three.module.js';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/controls/OrbitControls.js';
-import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/OBJLoader.js';
-import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/MTLLoader.js';
+import {ModelLoader} from './modelLoader.js';
 
 class BasicWorldDemo{
+	
     constructor(){
+        this.skybox;
+        this._threejs;
+        this._scene;
         this._Initialize();
+        
     }
     
     _Initialize(){
@@ -25,7 +29,7 @@ class BasicWorldDemo{
         const fov = 60;
         const aspect = 16/9;
         const near = 1.0;
-        const far = 10000.0;
+        const far = 100001.0;
         this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
         this._camera.position.set(100, 100, 100);
         
@@ -43,22 +47,31 @@ class BasicWorldDemo{
         
         this._scene.add(light);
         
+		
+		const sky = new THREE.TextureLoader().load('./Images/SkyBox_4K.jpg');
+		sky.mapping = THREE.SphericalReflectionMapping;
+		
+		
+		this.skybox = new THREE.Mesh(
+				new THREE.SphereGeometry( 100000, 50, 50 ),
+				new THREE.MeshBasicMaterial({
+			    side: THREE.BackSide,
+			    map: sky,
+			    //wireframe: true
+				})
+			);
+		
+		this._scene.add(this.skybox);
+		
+		
         //---draw---
-        const MtlLoader = new MTLLoader();
-        const ObjLoader = new OBJLoader();
-        
-        const Ground = new THREE.Group();
-        
-        MtlLoader.load('./models/plytka_test.mtl', function (materials) {
-            materials.preload();
-            ObjLoader.setMaterials(materials);
-            ObjLoader.load('./models/plytka_test.obj', function (object) {
+        const instanceCount = 10000;
+        const tmp = new ModelLoader('./models/plytka_test.obj', './models/plytka_test.mtl', (e) => {
+            console.log(tmp);
+
+        const instancedMesh = new THREE.InstancedMesh(tmp._model.geometry, tmp._model.material, instanceCount);
                 
-                const instanceCount = 1000;
-                const mesh = object.children[0];
-                const instancedMesh = new THREE.InstancedMesh(mesh.geometry, mesh.material, instanceCount);
-                
-                const Object_emulation = new THREE.Object3D();
+        const Object_emulation = new THREE.Object3D();
                 
                 Object_emulation.rotateX(-Math.PI/2);
                 
@@ -72,9 +85,8 @@ class BasicWorldDemo{
                         instancedMesh.setMatrixAt( i, Object_emulation.matrix );
                         i++;
                 }}
-                    Ground.add(instancedMesh);
-                    
-                /* do testow, zobacz jak wydajnosc moze sie psuc
+        
+         /* do testow, zobacz jak wydajnosc moze sie psuc
                 for(var x=0; x<instanceCount ; x++)
                     for(var z=0; z<instanceCount ; z++){
                         mesh.position.x = 640*x ;
@@ -82,14 +94,10 @@ class BasicWorldDemo{
                         //Ground.add(mesh.clone());
                         
                     }*/
-                
-            });
-            
-            
+        
+        //new THREE.Mesh(model.geometry, model.material);
+        this._scene.add( instancedMesh );
         });
-        
-        this._scene.add( Ground );
-        
         //-------
         
         
@@ -109,6 +117,7 @@ class BasicWorldDemo{
     {
         requestAnimationFrame(() => {
             this._threejs.render(this._scene, this._camera);
+			this.skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
             this._RAF();
         });    
     }
