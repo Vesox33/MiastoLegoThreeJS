@@ -65,10 +65,11 @@ class BasicWorldDemo{
 		
 		
         //---draw---
-        const instanceCount = 10000;
+        
         const tmp = new ModelLoader('./models/plytka_test.obj', './models/plytka_test.mtl', (e) => {
             console.log(tmp);
-
+		/*
+		const instanceCount = 10000;
         const instancedMesh = new THREE.InstancedMesh(tmp._model.geometry, tmp._model.material, instanceCount);
                 
         const Object_emulation = new THREE.Object3D();
@@ -76,8 +77,8 @@ class BasicWorldDemo{
                 Object_emulation.rotateX(-Math.PI/2);
                 
                 let i=0;
-                for(var x=0; x<10; x++){
-                    for(var z=0; z<10; z++){
+                for(var x=0; x<100; x++){
+                    for(var z=0; z<100; z++){
                         Object_emulation.position.x = 640*x;
                         Object_emulation.position.z = 640*z;
                         
@@ -85,18 +86,21 @@ class BasicWorldDemo{
                         instancedMesh.setMatrixAt( i, Object_emulation.matrix );
                         i++;
                 }}
+				this._scene.add( instancedMesh );
+				
+		*/		
         
-         /* do testow, zobacz jak wydajnosc moze sie psuc
-                for(var x=0; x<instanceCount ; x++)
-                    for(var z=0; z<instanceCount ; z++){
-                        mesh.position.x = 640*x ;
-                        mesh.position.z = 640*z ;
-                        //Ground.add(mesh.clone());
-                        
-                    }*/
-        
-        //new THREE.Mesh(model.geometry, model.material);
-        this._scene.add( instancedMesh );
+         /* do testow, zobacz jak wydajnosc moze sie psuc*/
+                for(var x=0; x<100 ; x++){
+                    for(var z=0; z<100 ; z++){
+						const t =  new THREE.Mesh(tmp._model.geometry, tmp._model.material);
+						t.rotateX(-Math.PI/2);
+                        t.position.x = 640*x ;
+                        t.position.z = 640*z ;
+                        this._scene.add( t );
+					}
+				}
+			
         });
         //-------
         
