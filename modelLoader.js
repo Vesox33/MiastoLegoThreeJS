@@ -19,7 +19,7 @@ class ModelLoader {
                 ObjLoader.setMaterials(materials);
                 ObjLoader.load(obj, (object) => {
                 
-                    this._model = object.children[0];
+                    this._model = object;
                     callback();
                     
             });
