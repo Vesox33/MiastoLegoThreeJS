@@ -1,8 +1,17 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.125.0/build/three.module.js';
-import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/controls/OrbitControls.js';
-//import {FlyControls} from 'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/controls/FlyControls.js';
-import {ModelLoader} from './modelLoader.js';
+import * as THREE from 'three';
+import Stats from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/libs/stats.module.js';
 
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
+//import {FlyControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/FlyControls.js';
+import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
+
+
+import {LDrawLoader} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/loaders/LDrawLoader.js';//'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/LDrawLoader.js';
+import {LDrawUtils} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/utils/LDrawUtils.js';
+
+
+
+//import {ModelLoader} from './modelLoader.js';
 
 class BasicWorldDemo{
 	
@@ -11,6 +20,7 @@ class BasicWorldDemo{
         this._threejs;
         this._scene;
         this.controls;
+        this._stats;
         this._Initialize();
         
     }
@@ -38,10 +48,15 @@ class BasicWorldDemo{
         
         this._scene = new THREE.Scene();
         
+        this._stats = new Stats();
+        document.body.appendChild(this._stats.dom);
+        
       	this.controls = new OrbitControls( this._camera, this._threejs.domElement );
         
         //this.controls = new FlyControls( this._camera, this._threejs.domElement );
         //this.controls.dragToLook = true;
+        
+        //this.constrols = new PointerLockControls(this._camera, this._threejs.domElement);
         
       
         let light = new THREE.DirectionalLight(0xFFFFFF);
@@ -71,49 +86,41 @@ class BasicWorldDemo{
 		
 		
         //---draw---
+        const Ground = new LDrawLoader();
+        Ground.smoothNormals  = true;
+        //LDloader.flatColors  = false;
         
-        const tmp = new ModelLoader('./models/ground_test.obj', './models/ground_test.mtl', () => {
-            console.log(tmp);
-		/* INSTANCED RENDERING */
-        /*
-		const instanceCount = 10000;
-        const instancedMesh = new THREE.InstancedMesh(tmp._model.geometry, tmp._model.material, instanceCount);
+        Ground.load('models/Ground_small.mpd_Packed.mpd', (e) => {
+            new LDrawLoader().load('models/skyscraper_1(detailed).mpd_Packed.mpd', (b) =>{
+               //e.visible = false;
+               
+               e = LDrawUtils.mergeObject( e );
+               b = LDrawUtils.mergeObject( b );
+               
+               e.rotateX(-Math.PI);
+               b.rotateX(-Math.PI);
                 
-        const Object_emulation = new THREE.Object3D();
-                
-                Object_emulation.rotateX(-Math.PI/2);
-                
-                let i=0;
-                for(var x=0; x<100; x++){
-                    for(var z=0; z<100; z++){
-                        Object_emulation.position.x = 640*x;
-                        Object_emulation.position.z = 640*z;
-                        
-                        Object_emulation.updateMatrix();
-                        instancedMesh.setMatrixAt( i, Object_emulation.matrix );
-                        i++;
-                }}
-				this._scene.add( instancedMesh );
-				
-		*/		
-            tmp._model.rotateX(-Math.PI/2);
-         /* STANDARD RENDERING */
-                for(var x=0; x<20 ; x++){
-                    for(var z=0; z<20 ; z++){
-                        
-                        /*const t = new THREE.Group();
-                        tmp._model.children.forEach( (e) => {
-                            t.add(new THREE.Mesh(e.geometry, e.material));
-                        });*/
-                        
-						
-                        tmp._model.position.x = 4*640*x ;
-                        tmp._model.position.z = 4*640*z ;
-                        
-                        this._scene.add( tmp._model.clone() ); 
-					}
-				}
-			
+             /* STANDARD RENDERING */
+                    for(var x=0; x<5 ; x++){
+                        for(var z=0; z<5 ; z++){
+                            
+                            e.position.x = 4*640*x ;
+                            e.position.z = 4*640*z ;
+                            
+                            this._scene.add( e.clone() );
+                            
+                            b.position.x = 4*640*x - 300 ;
+                            b.position.z = 4*640*z - 100 ;
+                            
+                            b.scale.set(3, 3, 3);
+                            
+                            this._scene.add( b.clone() );
+                            
+                            
+                        }
+                    }
+                //this._scene.add( e ); 
+            });
         });
         //-------
         
@@ -137,6 +144,7 @@ class BasicWorldDemo{
             
 			this.skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
             this.controls.update(5);
+            this._stats.update();
             
             this._RAF();
         });    
