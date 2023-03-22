@@ -69,7 +69,7 @@ class BasicWorldDemo{
         this._scene.add(light);
         
 		
-		const sky = new THREE.TextureLoader().load('./Images/SkyBox_4K.jpg');
+		const sky = new THREE.TextureLoader().load('./Images/SkyBox4K.png');
 		sky.mapping = THREE.SphericalReflectionMapping;
 		
 		
