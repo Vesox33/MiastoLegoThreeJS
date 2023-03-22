@@ -90,7 +90,7 @@ class BasicWorldDemo{
         Ground.smoothNormals  = true;
         //LDloader.flatColors  = false;
         
-        Ground.load('models/Ground_small.mpd_Packed.mpd', (e) => {
+        Ground.load('models/Ground_huge(fixed).mpd_Packed.mpd', (e) => {
             new LDrawLoader().load('models/skyscraper_1(detailed).mpd_Packed.mpd', (b) =>{
                //e.visible = false;
                
@@ -104,13 +104,13 @@ class BasicWorldDemo{
                     for(var x=0; x<5 ; x++){
                         for(var z=0; z<5 ; z++){
                             
-                            e.position.x = 4*640*x ;
-                            e.position.z = 4*640*z ;
+                            e.position.x = 5*640*x ;
+                            e.position.z = 5*640*z ;
                             
                             this._scene.add( e.clone() );
                             
-                            b.position.x = 4*640*x - 300 ;
-                            b.position.z = 4*640*z - 100 ;
+                            b.position.x = 4*640*x + 300;
+                            b.position.z = 4*640*z + 400;
                             
                             b.scale.set(3, 3, 3);
                             
