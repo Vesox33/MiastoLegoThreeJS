@@ -3,15 +3,18 @@ import Stats from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/libs/
 
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
 //import {FlyControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/FlyControls.js';
-import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
+//import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
 
 
-import {LDrawLoader} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/loaders/LDrawLoader.js';//'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/LDrawLoader.js';
-import {LDrawUtils} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/utils/LDrawUtils.js';
+import {ModelLoader} from './modelLoader.js';
+
+//to na pozniej
+//import {LDrawLoader} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/loaders/LDrawLoader.js';//'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/LDrawLoader.js';
+//import {LDrawUtils} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/utils/LDrawUtils.js';
 
 
 
-//import {ModelLoader} from './modelLoader.js';
+
 
 class BasicWorldDemo{
 	
@@ -86,40 +89,30 @@ class BasicWorldDemo{
 		
 		
         //---draw---
-        const Ground = new LDrawLoader();
-        Ground.smoothNormals  = true;
-        //LDloader.flatColors  = false;
-        
-        Ground.load('models/Ground_huge(fixed).mpd_Packed.mpd', (e) => {
-            new LDrawLoader().load('models/skyscraper_1(detailed).mpd_Packed.mpd', (b) =>{
-               //e.visible = false;
-               
-               e = LDrawUtils.mergeObject( e );
-               b = LDrawUtils.mergeObject( b );
-               
-               e.rotateX(-Math.PI);
-               b.rotateX(-Math.PI);
-                
+        new ModelLoader('models/Ground_huge(fixed).glb', (e) => {
+            let ground = e.scene;
+            new ModelLoader('models/skyscraper_1(detailed).glb', (b) => {
+                let tower_detailed = b.scene;
              /* STANDARD RENDERING */
                     for(var x=0; x<5 ; x++){
                         for(var z=0; z<5 ; z++){
                             
-                            e.position.x = 5*640*x ;
-                            e.position.z = 5*640*z ;
+                            ground.position.x = 4*660*x ;
+                            ground.position.z = 4*660*z ;
                             
-                            this._scene.add( e.clone() );
+                            this._scene.add( ground.clone() );
                             
-                            b.position.x = 4*640*x + 300;
-                            b.position.z = 4*640*z + 400;
+                            tower_detailed.position.x = 4*660*x - 500 ;
+                            tower_detailed.position.z = 4*660*z + 600 ;
                             
-                            b.scale.set(3, 3, 3);
+                            tower_detailed.scale.set(3, 3, 3);
                             
-                            this._scene.add( b.clone() );
+                            this._scene.add( tower_detailed.clone() );
                             
                             
                         }
                     }
-                //this._scene.add( e ); 
+                //this._scene.add( ground ); 
             });
         });
         //-------
