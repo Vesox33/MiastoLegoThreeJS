@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import Stats from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/libs/stats.module.js';
 
-import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
+//import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
 //import {FlyControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/FlyControls.js';
-//import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
-
+import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
 
 import {ModelLoader} from './modelLoader.js';
 
@@ -18,12 +17,17 @@ import {ModelLoader} from './modelLoader.js';
 
 class BasicWorldDemo{
 	
+	
+	
     constructor(){
         this.skybox;
         this._threejs;
         this._scene;
         this.controls;
         this._stats;
+		this.clock;
+		this.keys = [];
+		this._keyboardInput();
         this._Initialize();
         
     }
@@ -54,12 +58,32 @@ class BasicWorldDemo{
         this._stats = new Stats();
         document.body.appendChild(this._stats.dom);
         
-      	this.controls = new OrbitControls( this._camera, this._threejs.domElement );
+      	//this.controls = new OrbitControls( this._camera, this._threejs.domElement );
         
         //this.controls = new FlyControls( this._camera, this._threejs.domElement );
         //this.controls.dragToLook = true;
         
-        //this.constrols = new PointerLockControls(this._camera, this._threejs.domElement);
+        
+	
+		this.clock = new THREE.Clock(true);
+		
+		this.controls = new PointerLockControls(this._camera, this._threejs.domElement);
+		
+		
+		this._threejs.domElement.addEventListener('mousedown', (e) => {
+			this.controls.lock();
+		});
+		
+		document.addEventListener('keydown', (e) => {
+			this.keys[e.keyCode] = true;
+			//console.log('W'.charCodeAt(0) == e.keyCode);
+		});
+		
+		
+		
+		document.addEventListener('keyup', (e) => {
+			this.keys[e.keyCode] = false;
+		});
         
       
         let light = new THREE.DirectionalLight(0xFFFFFF);
@@ -87,12 +111,28 @@ class BasicWorldDemo{
 		
 		this._scene.add(this.skybox);
 		
+		/*
+		setMaterialsOnGLTF(object3D) {
+		if (object3D.material) {
+		  const newMaterial = new THREE.MeshPhongMaterial( { map: object3D.material.map } );
+		  object3D.material = newMaterial;
+		}
+		if (!object3D.children) {
+		  return;
+		}
+		for (let i = 0; i < object3D.children.length; i++) {
+		  Utilities.setMaterialsOnGLTF(object3D.children[i]);
+		}
+	  }
+		*/
+		
 		
         //---draw---
         new ModelLoader('models/Ground_huge(fixed).glb', (e) => {
             let ground = e.scene;
             new ModelLoader('models/skyscraper_1(detailed).glb', (b) => {
                 let tower_detailed = b.scene;
+				tower_detailed.geometry
              /* STANDARD RENDERING */
                     for(var x=0; x<5 ; x++){
                         for(var z=0; z<5 ; z++){
@@ -122,6 +162,8 @@ class BasicWorldDemo{
         
         
     }
+	
+	
     
     
     _OnWindowResize() {
@@ -136,12 +178,29 @@ class BasicWorldDemo{
             this._threejs.render(this._scene, this._camera);
             
 			this.skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
-            this.controls.update(5);
+            //this.controls.update( this.clock.getDelta() );
+			this._keyboardInput();
             this._stats.update();
             
             this._RAF();
-        });    
+        });
+	
     }
+	
+	_keyboardInput(){
+			if(this.keys['W'.charCodeAt(0)]){
+			this.controls.moveForward(5);
+			}
+			if(this.keys['S'.charCodeAt(0)]){
+			this.controls.moveForward(-5);
+			}
+			if(this.keys['A'.charCodeAt(0)]){
+			this.controls.moveRight(-5);
+			}
+			if(this.keys['D'.charCodeAt(0)]){
+			this.controls.moveRight(5);
+			}
+	}
 }
 
 new BasicWorldDemo;
