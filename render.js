@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import Stats from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/libs/stats.module.js';
 
 //import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
-//import {FlyControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/FlyControls.js';
+
 import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
 
 import {ModelLoader} from './modelLoader.js';
@@ -13,12 +13,9 @@ import {ModelLoader} from './modelLoader.js';
 
 
 
-
-
 class BasicWorldDemo{
 	
-	
-	
+
     constructor(){
         this.skybox;
         this._threejs;
@@ -26,6 +23,7 @@ class BasicWorldDemo{
         this.controls;
         this._stats;
 		this.clock;
+        this.city_reflection;
 		this.keys = [];
 		this._keyboardInput();
         this._Initialize();
@@ -33,9 +31,11 @@ class BasicWorldDemo{
     }
     
     _Initialize(){
-        this._threejs = new THREE.WebGLRenderer();
+        this._threejs = new THREE.WebGLRenderer({antialias: true});
         this._threejs.shadowMap.enabled = true;
         this._threejs.shadowMap.type = THREE.PCFSoftShadowMap;
+		this._threejs.useLegacyLights = true;
+        //this._threejs.outputEncoding = THREE.sRGBEncoding;
         this._threejs.setPixelRatio(window.devicePixelRatio);
         this._threejs.setSize(window.innerWidth, window.innerHeight);
 		this._threejs.setClearColor(new THREE.Color( 0x0004f ));
@@ -53,17 +53,13 @@ class BasicWorldDemo{
         this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
         this._camera.position.set(100, 100, 100);
         
+
         this._scene = new THREE.Scene();
         
         this._stats = new Stats();
         document.body.appendChild(this._stats.dom);
         
-      	//this.controls = new OrbitControls( this._camera, this._threejs.domElement );
-        
-        //this.controls = new FlyControls( this._camera, this._threejs.domElement );
-        //this.controls.dragToLook = true;
-        
-        
+		//this.controls = new OrbitControls( this._camera, this._threejs.domElement );
 	
 		this.clock = new THREE.Clock(true);
 		
@@ -79,25 +75,38 @@ class BasicWorldDemo{
 			//console.log('W'.charCodeAt(0) == e.keyCode);
 		});
 		
-		
-		
 		document.addEventListener('keyup', (e) => {
 			this.keys[e.keyCode] = false;
 		});
         
       
-        let light = new THREE.DirectionalLight(0xFFFFFF);
-        light.position.set (100, 100, 100);
+        const light = new THREE.DirectionalLight(0xFFFFFF, 1);
+        light.position.set (10000, 10000, 10000);
         light.target.position.set(0, 0, 0);
         light.castShadow = true;
         light.shadow.mapSize.width = 2048;
         light.shadow.mapSize.height = 2048;
+		light.shadow.camera.near = 0;
+		light.shadow.camera.far = 100000;
+		light.shadow.camera.left = -10000;
+		light.shadow.camera.right = 10000;
+		light.shadow.camera.top = 10000;
+		light.shadow.camera.bottom = -10000;
         
         this._scene.add(light);
-        
 		
-		const sky = new THREE.TextureLoader().load('./Images/SkyBox4K.png');
-		sky.mapping = THREE.SphericalReflectionMapping;
+        //this._scene.add(new THREE.CameraHelper(light.shadow.camera));
+        
+        const ambientlight = new THREE.AmbientLight( 0xffffff, 0.1 );
+		this._scene.add(ambientlight);
+        
+		const texture_loader = new THREE.TextureLoader();
+		const sky = texture_loader.load('./Images/SkyBox4K.png');
+        sky.mapping = THREE.SphericalReflectionMapping;
+		this.city_reflection = texture_loader.load('./Images/panorama-cityscape.jpg');
+        this.city_reflection.mapping = THREE.EquirectangularReflectionMapping;
+        //this.city_reflection.mapping = THREE.EquirectangularRefractionMapping;
+		
 		
 		
 		this.skybox = new THREE.Mesh(
@@ -111,42 +120,51 @@ class BasicWorldDemo{
 		
 		this._scene.add(this.skybox);
 		
-		/*
-		setMaterialsOnGLTF(object3D) {
-		if (object3D.material) {
-		  const newMaterial = new THREE.MeshPhongMaterial( { map: object3D.material.map } );
-		  object3D.material = newMaterial;
-		}
-		if (!object3D.children) {
-		  return;
-		}
-		for (let i = 0; i < object3D.children.length; i++) {
-		  Utilities.setMaterialsOnGLTF(object3D.children[i]);
-		}
-	  }
-		*/
-		
-		
         //---draw---
         new ModelLoader('models/Ground_huge(fixed).glb', (e) => {
             let ground = e.scene;
-            new ModelLoader('models/skyscraper_1(detailed).glb', (b) => {
+			
+			new ModelLoader('models/skyscraper_1(detailed).glb', (b) => {
                 let tower_detailed = b.scene;
-				tower_detailed.geometry
+                
+                ground.traverse((node) => {
+					if(node.isMesh) {
+                        node.geometry.computeVertexNormals();
+						node.receiveShadow = true;
+                        
+                        node.material.flatShading = false;
+                        node.material.roughness = 0.7;
+                        
+						console.log(node);
+					}
+				});
+                
+                tower_detailed.traverse((node) => {
+					if(node.isMesh) {
+                        node.geometry.computeVertexNormals();
+						//console.log(node.material);
+                        node.material.envMap = this.city_reflection;
+                        node.material.flatShading = false;
+                        node.material.roughness = 0.3;
+                        node.material.metalic = 1;
+
+						node.receiveShadow = true;
+						node.castShadow = true;
+					}
+				});
+				
+                
              /* STANDARD RENDERING */
                     for(var x=0; x<5 ; x++){
                         for(var z=0; z<5 ; z++){
                             
                             ground.position.x = 4*660*x ;
                             ground.position.z = 4*660*z ;
-                            
                             this._scene.add( ground.clone() );
                             
                             tower_detailed.position.x = 4*660*x - 500 ;
                             tower_detailed.position.z = 4*660*z + 600 ;
-                            
                             tower_detailed.scale.set(3, 3, 3);
-                            
                             this._scene.add( tower_detailed.clone() );
                             
                             
@@ -155,7 +173,6 @@ class BasicWorldDemo{
                 //this._scene.add( ground ); 
             });
         });
-        //-------
         
         
         this._RAF();
@@ -176,6 +193,7 @@ class BasicWorldDemo{
     {
         requestAnimationFrame(() => {
             this._threejs.render(this._scene, this._camera);
+            
             
 			this.skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
             //this.controls.update( this.clock.getDelta() );
