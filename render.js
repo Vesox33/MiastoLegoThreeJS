@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import Stats from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/libs/stats.module.js';
+import Stats from 'stats';
 
-//import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/OrbitControls.js';
-
-import {PointerLockControls} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/controls/PointerLockControls.js';
+import {OrbitControls} from 'OrbitControls';
+import {PointerLockControls} from 'PointerLockControls';
 
 import {ModelLoader} from './modelLoader.js';
 
@@ -17,21 +16,47 @@ class BasicWorldDemo{
 	
 
     constructor(){
-        this.skybox;
+        this._threejs;
+        this._camera;
+        
+        this._skybox;
         this._threejs;
         this._scene;
-        this.controls;
+        this._controls;
         this._stats;
-		this.clock;
-        this.city_reflection;
-		this.keys = [];
+		//this._clock;
+        this._city_reflection;
+		this._keys = [];
 		this._keyboardInput();
         this._Initialize();
+		this._settings = {thirdPerson: 0, fly: 0, characterVisibility: 0, active_movement: 0};
+		
+		this._Character;
+		
+		this._vector = new THREE.Vector3();
+        this._euler = new THREE.Euler();
+        this._quaternion = new THREE.Quaternion();
+		this._moveForward;
+		this._moveRight;
+		this._rotateRight;
+        
+        //this.orbit = new OrbitControls( this._camera, this._threejs.domElement );
+        //this.fps = new PointerLockControls(this._camera, this._threejs.domElement);
+        
+		/*this._capsule = new THREE.Group();
+        this._capsule.add(new THREE.Mesh( 
+			new THREE.CapsuleGeometry( 30, 60, 2, 12 ),
+			new THREE.MeshBasicMaterial( {color: 0xffffff, wireframe: true} ))
+		);
+        this._capsule.add(new THREE.AxesHelper(15));*/
+
+		this.thirdP_view();
         
     }
     
     _Initialize(){
         this._threejs = new THREE.WebGLRenderer({antialias: true});
+        
         this._threejs.shadowMap.enabled = true;
         this._threejs.shadowMap.type = THREE.PCFSoftShadowMap;
 		this._threejs.useLegacyLights = true;
@@ -42,43 +67,31 @@ class BasicWorldDemo{
         
         document.body.appendChild(this._threejs.domElement);
         
-        window.addEventListener('resize', () => {
-            this._OnWindowResize();
-        }, false);
+        
         
         const fov = 60;
         const aspect = 16/9;
         const near = 1.0;
         const far = 1000001.0;
         this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this._camera.position.set(100, 100, 100);
+        //this._camera.position.set(100, 100, 100);
         
 
         this._scene = new THREE.Scene();
         
         this._stats = new Stats();
         document.body.appendChild(this._stats.dom);
-        
-		//this.controls = new OrbitControls( this._camera, this._threejs.domElement );
 	
-		this.clock = new THREE.Clock(true);
-		
-		this.controls = new PointerLockControls(this._camera, this._threejs.domElement);
+		//this.clock = new THREE.Clock(true);
+		this._controls = new PointerLockControls(this._camera, this._threejs.domElement);
 		
 		
 		this._threejs.domElement.addEventListener('mousedown', (e) => {
-			this.controls.lock();
+            if(!this._settings.thirdPerson){
+                this._threejs.domElement.requestPointerLock();//this._controls.lock();
+            }
 		});
 		
-		document.addEventListener('keydown', (e) => {
-			this.keys[e.keyCode] = true;
-			//console.log('W'.charCodeAt(0) == e.keyCode);
-		});
-		
-		document.addEventListener('keyup', (e) => {
-			this.keys[e.keyCode] = false;
-		});
-        
       
         const light = new THREE.DirectionalLight(0xFFFFFF, 1);
         light.position.set (10000, 10000, 10000);
@@ -92,10 +105,11 @@ class BasicWorldDemo{
 		light.shadow.camera.right = 10000;
 		light.shadow.camera.top = 10000;
 		light.shadow.camera.bottom = -10000;
+        //this._scene.add(new THREE.CameraHelper(light.shadow.camera));
         
         this._scene.add(light);
 		
-        //this._scene.add(new THREE.CameraHelper(light.shadow.camera));
+        
         
         const ambientlight = new THREE.AmbientLight( 0xffffff, 0.1 );
 		this._scene.add(ambientlight);
@@ -103,13 +117,13 @@ class BasicWorldDemo{
 		const texture_loader = new THREE.TextureLoader();
 		const sky = texture_loader.load('./Images/SkyBox4K.png');
         sky.mapping = THREE.SphericalReflectionMapping;
-		this.city_reflection = texture_loader.load('./Images/panorama-cityscape.jpg');
-        this.city_reflection.mapping = THREE.EquirectangularReflectionMapping;
-        //this.city_reflection.mapping = THREE.EquirectangularRefractionMapping;
+		this._city_reflection = texture_loader.load('./Images/panorama-cityscape.jpg');
+        this._city_reflection.mapping = THREE.EquirectangularReflectionMapping;
+        //this._city_reflection.mapping = THREE.EquirectangularRefractionMapping;
 		
 		
 		
-		this.skybox = new THREE.Mesh(
+		this._skybox = new THREE.Mesh(
 				new THREE.SphereGeometry( 1000000, 50, 50 ),
 				new THREE.MeshBasicMaterial({
 			    side: THREE.BackSide,
@@ -118,7 +132,7 @@ class BasicWorldDemo{
 				})
 			);
 		
-		this._scene.add(this.skybox);
+		this._scene.add(this._skybox);
 		
         //---draw---
         new ModelLoader('models/Ground_huge(fixed).glb', (e) => {
@@ -135,7 +149,7 @@ class BasicWorldDemo{
                         node.material.flatShading = false;
                         node.material.roughness = 0.7;
                         
-						console.log(node);
+						//console.log(node);
 					}
 				});
                 
@@ -143,9 +157,9 @@ class BasicWorldDemo{
 					if(node.isMesh) {
                         node.geometry.computeVertexNormals();
 						//console.log(node.material);
-                        node.material.envMap = this.city_reflection;
+                        node.material.envMap = this._city_reflection;
                         node.material.flatShading = false;
-                        node.material.roughness = 0.3;
+                        node.material.roughness = 0; //0.3
                         node.material.metalic = 1;
 
 						node.receiveShadow = true;
@@ -170,33 +184,126 @@ class BasicWorldDemo{
                             
                         }
                     }
-                //this._scene.add( ground ); 
+                //this._scene.add( ground ); //single
             });
         });
-        
-        
+		
+		
+		this._Character = new THREE.Group();
+		
+		new ModelLoader('models/character.glb', (e) => {
+            let lego_char = e.scene;
+			
+                lego_char.traverse((node) => {
+					if(node.isMesh) {
+                        node.geometry.computeVertexNormals();
+						node.receiveShadow = true;
+                        node.castShadow = true;
+                        
+                        node.material.flatShading = false;
+                        node.material.roughness = 0.7;
+                        
+                    }
+                });
+                
+            lego_char.translateY(-60);
+            this._Character.add(lego_char);
+		});
+		this._Character.visible = false;
+		this._Character.position.set(0,60,0);
+		this._scene.add( this._Character );
+
         this._RAF();
         
         
+        document.addEventListener('keyup', (e) => {
+			this._keys[e.keyCode] = false;
+            if(this._keys['W'.charCodeAt(0)] || this._keys['S'.charCodeAt(0)] || this._keys['A'.charCodeAt(0)] || this._keys['D'.charCodeAt(0)]){
+                null; //movement_on
+            }else{this._settings.active_movement = 0;}
+                
+		});
+        
+        document.addEventListener('keydown', (e) => {
+			this._keys[e.keyCode] = true;
+			//console.log('W'.charCodeAt(0) == e.keyCode);
+			//console.log(e.code);
+			
+			switch(e.code){
+				case 'KeyR': 
+					this._settings.thirdPerson = 1 - this._settings.thirdPerson;
+					this._settings.characterVisibility = 1 - this._settings.characterVisibility;
+					
+					if(this._settings.characterVisibility)
+						this._Character.visible = true;
+					else
+						this._Character.visible = false;
+						
+                    if(this._controls)
+                        this._controls.dispose();
+                    
+					if(this._settings.thirdPerson){
+                        this._threejs.domElement.ownerDocument.exitPointerLock();//this._controls.unlock();
+						console.log("3-Person On");
+                        
+						this._controls = new OrbitControls( this._camera, this._threejs.domElement );
+                        this._controls.maxDistance = 300;
+                        //this._controls.minDistance = 300;
+                        //this._controls.minPolarAngle = 0;
+                        //this._controls.maxPolarAngle = Math.PI/3;
+                        this._camera.translateY(120);
+                        this._camera.translateZ(-200);
+					}else{
+						console.log("3-Person Off");
+						this._controls = new PointerLockControls(this._camera, this._threejs.domElement);
+					}
+				break;
+                
+                default: this._settings.active_movement = 1;
+			}
+
+		});
+        
+        window.addEventListener('resize', () => {
+            this._OnWindowResize();
+        }, false);
+        
+
+    }
+    
+    thirdP_view(){
+        this._camera.rotation.setFromQuaternion(this._Character.quaternion, this._Character.rotation.order);
+        this._camera.position.set(this._Character.position.x, this._Character.position.y, this._Character.position.z);
+        this._camera.translateY(100);
+        this._camera.translateZ(-200);
     }
 	
-	
-    
-    
-    _OnWindowResize() {
-        this._camera.aspect = window.innerWidth / window.innerHeight;
-        this._camera.updateProjectionMatrix();
-        this._threejs.setSize(window.innerWidth, window.innerHeight);
-    }
     
     _RAF()
     {
         requestAnimationFrame(() => {
             this._threejs.render(this._scene, this._camera);
             
+			this._skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
+			
+			if(this._settings.thirdPerson){
+                if(this._settings.active_movement){
+                    this.thirdP_view();
+                }
+                
+                this._controls.target.set(this._Character.position.x, this._Character.position.y, this._Character.position.z);
+                
+                this._controls.update();
+
+            }else{
+                this._camera.position.set(this._Character.position.x, this._Character.position.y, this._Character.position.z);
+				
+				this._quaternion.set(0,this._camera.quaternion.y,0,this._camera.quaternion.w);
+                this._Character.rotation.setFromQuaternion(this._quaternion, this._Character.rotation.order);
+				this._Character.rotateY(Math.PI);
+
+            }
             
-			this.skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
-            //this.controls.update( this.clock.getDelta() );
 			this._keyboardInput();
             this._stats.update();
             
@@ -206,19 +313,32 @@ class BasicWorldDemo{
     }
 	
 	_keyboardInput(){
-			if(this.keys['W'.charCodeAt(0)]){
-			this.controls.moveForward(5);
+			if(this._keys['W'.charCodeAt(0)]){
+				this._Character.translateZ(5);
+                
 			}
-			if(this.keys['S'.charCodeAt(0)]){
-			this.controls.moveForward(-5);
+			if(this._keys['S'.charCodeAt(0)]){
+				this._Character.translateZ(-5);
 			}
-			if(this.keys['A'.charCodeAt(0)]){
-			this.controls.moveRight(-5);
+			if(this._keys['A'.charCodeAt(0)]){
+				if(this._settings.thirdPerson)
+					this._Character.rotateY(0.05);
+				else
+					this._Character.translateX(5);
 			}
-			if(this.keys['D'.charCodeAt(0)]){
-			this.controls.moveRight(5);
+			if(this._keys['D'.charCodeAt(0)]){
+				if(this._settings.thirdPerson)
+					this._Character.rotateY(-0.05);
+				else
+					this._Character.translateX(-5);
 			}
 	}
+	
+	_OnWindowResize() {
+        this._camera.aspect = window.innerWidth / window.innerHeight;
+        this._camera.updateProjectionMatrix();
+        this._threejs.setSize(window.innerWidth, window.innerHeight);
+    }
 }
 
 new BasicWorldDemo;
