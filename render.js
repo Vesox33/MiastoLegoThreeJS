@@ -6,14 +6,17 @@ import {PointerLockControls} from 'PointerLockControls';
 
 import {ModelLoader} from './modelLoader.js';
 
+import GUI from 'lil-gui';
+
 //to na pozniej
-//import {LDrawLoader} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/loaders/LDrawLoader.js';//'https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/LDrawLoader.js';
+//import {LDrawLoader} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/loaders/LDrawLoader.js';
+//https://cdn.jsdelivr.net/npm/three@0.125.0/examples/jsm/loaders/LDrawLoader.js';
 //import {LDrawUtils} from 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/utils/LDrawUtils.js';
 
 
 
 class BasicWorldDemo{
-	
+    
 
     constructor(){
         this._threejs;
@@ -29,13 +32,19 @@ class BasicWorldDemo{
 		this._keys = [];
 		this._keyboardInput();
         this._Initialize();
-		this._settings = {thirdPerson: 0, fly: 0, characterVisibility: 0, active_movement: 0};
+		this._settings;
 		
+		this._renderedTiles;
+		this.loaded_models;
+		this._generateTiles;
+        
 		this._Character;
+        this._World;
+        
 		
-		this._vector = new THREE.Vector3();
-        this._euler = new THREE.Euler();
-        this._quaternion = new THREE.Quaternion();
+		this._vector;
+        this._euler;
+        this._quaternion;
 		this._moveForward;
 		this._moveRight;
 		this._rotateRight;
@@ -55,6 +64,14 @@ class BasicWorldDemo{
     }
     
     _Initialize(){
+		this._settings = {thirdPerson: 0, fly: 0, characterVisibility: 0, active_movement: 0, fog: 0};
+		this._World = new THREE.Group();
+		
+		this._vector = new THREE.Vector3();
+        this._euler = new THREE.Euler();
+        this._quaternion = new THREE.Quaternion();
+		//let scope = this;
+		
         this._threejs = new THREE.WebGLRenderer({antialias: true});
         
         this._threejs.shadowMap.enabled = true;
@@ -63,7 +80,7 @@ class BasicWorldDemo{
         //this._threejs.outputEncoding = THREE.sRGBEncoding;
         this._threejs.setPixelRatio(window.devicePixelRatio);
         this._threejs.setSize(window.innerWidth, window.innerHeight);
-		this._threejs.setClearColor(new THREE.Color( 0x0004f ));
+		this._threejs.setClearColor(new THREE.Color( 0x00000 ));
         
         document.body.appendChild(this._threejs.domElement);
         
@@ -73,8 +90,8 @@ class BasicWorldDemo{
         const aspect = 16/9;
         const near = 1.0;
         const far = 1000001.0;
+        //const far =15001.0;
         this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        //this._camera.position.set(100, 100, 100);
         
 
         this._scene = new THREE.Scene();
@@ -92,6 +109,8 @@ class BasicWorldDemo{
             }
 		});
 		
+        
+        
       
         const light = new THREE.DirectionalLight(0xFFFFFF, 1);
         light.position.set (10000, 10000, 10000);
@@ -110,7 +129,6 @@ class BasicWorldDemo{
         this._scene.add(light);
 		
         
-        
         const ambientlight = new THREE.AmbientLight( 0xffffff, 0.1 );
 		this._scene.add(ambientlight);
         
@@ -120,7 +138,6 @@ class BasicWorldDemo{
 		this._city_reflection = texture_loader.load('./Images/panorama-cityscape.jpg');
         this._city_reflection.mapping = THREE.EquirectangularReflectionMapping;
         //this._city_reflection.mapping = THREE.EquirectangularRefractionMapping;
-		
 		
 		
 		this._skybox = new THREE.Mesh(
@@ -134,60 +151,104 @@ class BasicWorldDemo{
 		
 		this._scene.add(this._skybox);
 		
-        //---draw---
-        new ModelLoader('models/Ground_huge(fixed).glb', (e) => {
-            let ground = e.scene;
-			
-			new ModelLoader('models/skyscraper_1(detailed).glb', (b) => {
-                let tower_detailed = b.scene;
+        const plytki = ["skyscraper_1det"];
+        
+        this._renderedTiles = new THREE.Group();
+        this.loaded_models=0;
+        
+        plytki.forEach((PLYTKA) => {
+            let model_high = 'models/world/high/'+PLYTKA+'_high'+'.glb';
+            let model_low = 'models/world/low/'+PLYTKA+'_low'+'.glb';
+            
+            //---draw---
+            new ModelLoader(model_high, (mh) => {
+            new ModelLoader(model_low, (ml) => {
+                let model_high = mh.scene;
+                let model_low = ml.scene;
+                let ground_high = model_high.children[0];
+                let tower_high = model_high.children[1];
                 
-                ground.traverse((node) => {
-					if(node.isMesh) {
-                        node.geometry.computeVertexNormals();
-						node.receiveShadow = true;
-                        
-                        node.material.flatShading = false;
-                        node.material.roughness = 0.7;
-                        
-						//console.log(node);
-					}
-				});
-                
-                tower_detailed.traverse((node) => {
-					if(node.isMesh) {
-                        node.geometry.computeVertexNormals();
-						//console.log(node.material);
-                        node.material.envMap = this._city_reflection;
-                        node.material.flatShading = false;
-                        node.material.roughness = 0; //0.3
-                        node.material.metalic = 1;
-
-						node.receiveShadow = true;
-						node.castShadow = true;
-					}
-				});
-				
-                
-             /* STANDARD RENDERING */
-                    for(var x=0; x<5 ; x++){
-                        for(var z=0; z<5 ; z++){
+                let ground_low = model_low.children[0];
+                let tower_low = model_low.children[1];
+                    
+                    ground_high.traverse((node) => {
+                        if(node.isMesh) {
+                            node.geometry.computeVertexNormals();
+                            node.receiveShadow = true;
                             
-                            ground.position.x = 4*660*x ;
-                            ground.position.z = 4*660*z ;
-                            this._scene.add( ground.clone() );
+                            node.material.flatShading = false;
+                            node.material.roughness = 0.7;
                             
-                            tower_detailed.position.x = 4*660*x - 500 ;
-                            tower_detailed.position.z = 4*660*z + 600 ;
-                            tower_detailed.scale.set(3, 3, 3);
-                            this._scene.add( tower_detailed.clone() );
-                            
-                            
+                            //console.log(node);
                         }
-                    }
-                //this._scene.add( ground ); //single
+                    });
+                    
+                    tower_high.traverse((node) => {
+                        if(node.isMesh) {
+                            node.geometry.computeVertexNormals();
+                            //console.log(node.material);
+                            node.material.envMap = this._city_reflection;
+                            node.material.flatShading = false;
+                            node.material.roughness = 0; //0.3
+                            node.material.metalic = 1;
+
+                            node.receiveShadow = true;
+                            node.castShadow = true;
+                        }
+                    });
+                    
+                    ground_low.traverse((node) => {
+                        if(node.isMesh) {
+                            node.material.flatShading = true;
+                        }
+                    });
+                    
+                    tower_low.traverse((node) => {
+                        if(node.isMesh) {
+                            node.material.envMap = this._city_reflection;
+                            node.material.flatShading = true;
+                        }
+                    });
+                    
+                    
+                 /* STANDARD RENDERING */
+                    
+                       
+                                //20 threejs unit = 1 jednostka lego (from blender)
+                                const PlytkaLOD = new THREE.LOD();
+                                
+                                let model_length = ((5*32)+22)*20;
+                                //let model_length = ((5*32)+22);
+
+                                PlytkaLOD.addLevel(model_high.clone(), 0);
+                                
+                                PlytkaLOD.addLevel(model_low.clone(), model_length*1.5);
+                                
+                                PlytkaLOD.name = PLYTKA;
+                                
+                                this._renderedTiles.add( PlytkaLOD );
+                                //this._scene.add( PlytkaLOD );
+                                //this._World.add( PlytkaLOD );
+                                this.loaded_models++;
+                    //this._scene.add( ground ); //single
+                    //console.log(this._World );
+                    //this._scene.add( this._World );
+					if(this.loaded_models >= 1){
+						this._generateTiles();
+					
+					}
+                    
             });
+            });
+			
+			
+            
         });
-		
+        
+        
+        //console.log(renderedTiles);
+        
+        
 		
 		this._Character = new THREE.Group();
 		
@@ -212,8 +273,27 @@ class BasicWorldDemo{
 		this._Character.visible = false;
 		this._Character.position.set(0,60,0);
 		this._scene.add( this._Character );
-
+		
+		//this._camera.far = 15001.0;
+        this._camera.far = 7001.0;
+        this._camera.updateProjectionMatrix();
+		const fog_color = 0xFFFFFF;  // white
+	    const fog_near = this._camera.near;
+	    const fog_far = this._camera.far;
+	    this._scene.fog = new THREE.Fog(fog_color, fog_near, fog_far);
+		this._scene.background = new THREE.Color(fog_color);
+		
+        const gui = new GUI();
+		gui.add(this._settings,'fog');
+		gui.add(this._camera,'far', 0, 20000).onChange(() => {
+			this._camera.updateProjectionMatrix();
+			this._scene.fog.near = this._camera.near;
+			this._scene.fog.far = this._camera.far;
+			});
+		//gui.add( document, 'title' );
+		
         this._RAF();
+        
         
         
         document.addEventListener('keyup', (e) => {
@@ -277,6 +357,24 @@ class BasicWorldDemo{
         this._camera.translateY(100);
         this._camera.translateZ(-200);
     }
+	
+	_generateTiles(){
+			for(var worldx=0; worldx<50 ; worldx++){
+			for(var worldz=0; worldz<50 ; worldz++){
+				let tile = this._renderedTiles.children[0];
+				//renderedTiles.traverse((tile) => {
+					//console.log(this.loaded_models);
+				let model_length = ((5*32)+22)*20;
+				//console.log(renderedTiles.children[0]);
+				//console.log(tile);
+				tile.position.x = (model_length)*worldx; //6*(182*5) // 6*(5*32 +22)*5 
+				tile.position.z = (model_length)*worldz;
+				this._scene.add( tile.clone() );
+				//});
+			}
+			}
+			
+	} 
 	
     
     _RAF()
