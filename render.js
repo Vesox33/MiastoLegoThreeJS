@@ -34,7 +34,7 @@ class BasicWorldDemo{
         this._stats;
         
         this._city_reflection;
-		this._keys = [];
+		this._keys;
 		this._UpdatePlayer();
         
         this._PlayerState;
@@ -50,6 +50,7 @@ class BasicWorldDemo{
         
 		this._Player;
         this._PlayerVelocity;
+        this._PlayerDirection;
         
 		this._CharacterCollider;
         this._playerBoundingBox;
@@ -72,6 +73,8 @@ class BasicWorldDemo{
         
         this._raycaster;
         this._VectorDirections;
+		
+		this._Reset;
         
         
         //this.orbit = new OrbitControls( this._camera, this._threejs.domElement );
@@ -108,7 +111,7 @@ class BasicWorldDemo{
 			fog: false,
             
             worldSize: 5,
-            gravity: -30,
+            gravity: -10,
             playerSpeed: 500,
 			playerRotationSpeed: 2,
 			carSpeed: 1000,
@@ -125,7 +128,14 @@ class BasicWorldDemo{
             Bkw: new THREE.Vector3( 0, 0, -1 ),
         };
         
-        this._PlayerVelocity = new THREE.Vector3();
+        this._PlayerVelocity = new THREE.Vector3(0,0,0);
+        this._PlayerDirection = new THREE.Vector3(0,0,0);
+        
+        this._keys = [];
+        this._keys['W'.charCodeAt(0)] = false;
+        this._keys['S'.charCodeAt(0)] = false;
+        this._keys['A'.charCodeAt(0)] = false;
+        this._keys['D'.charCodeAt(0)] = false;
         
         
         this._clock = new THREE.Clock();
@@ -141,6 +151,7 @@ class BasicWorldDemo{
         
         this._WorldColliders = new THREE.Group();
         this._WorldColliders.name = "WorldColliders";
+		
         
 		
 		this._vector = new THREE.Vector3();
@@ -282,7 +293,7 @@ class BasicWorldDemo{
         const gui = new GUI();
         
         const physic_settings = gui.addFolder('Physic');
-        physic_settings.add( this._settings, 'gravity', - 100, 100, 0.01 ).onChange( v => {
+        physic_settings.add( this._settings, 'gravity', - 10, 10, 1 ).onChange( v => {
             this._settings.gravity = parseFloat( v );
         });
         physic_settings.add( this._settings, 'playerSpeed', 1, 1000 );
@@ -319,18 +330,14 @@ class BasicWorldDemo{
         
         document.addEventListener('keyup', (e) => {
 			this._keys[e.keyCode] = false;
-            if(this._keys['W'.charCodeAt(0)] || this._keys['S'.charCodeAt(0)] || this._keys['A'.charCodeAt(0)] || this._keys['D'.charCodeAt(0)]){
-                null; //movement_on
-            }else{
-				this._settings.active_movement = 0;
-				}
+            
                 
 		});
         
         document.addEventListener('keydown', (e) => {
 			this._keys[e.keyCode] = true;
 			//console.log('W'.charCodeAt(0) == e.keyCode);
-			//console.log(e.code);
+			console.log(e.code+"-"+ e.keyCode);
 			
 			switch(e.code){
 				case 'KeyR': 
@@ -370,7 +377,6 @@ class BasicWorldDemo{
 					}
 				break;
                 
-                //default: this._settings.active_movement = 1;
 			}
 
 		});
@@ -406,173 +412,220 @@ class BasicWorldDemo{
             
 			this._skybox.position.set(this._camera.position.x,this._camera.position.y,this._camera.position.z);
             
-            //if(this._settings.gameReady){
+            //if(delta){
                 this._UpdatePlayer(delta);
             //}
-            
-            
-            
+
             this._RAF();
         });
     }
 	
 
 	_UpdatePlayer( delta ){
-        //console.log(this._Player.position);
-        console.log(this._PlayerState.playerIsOnGround);
-            if ( this._PlayerState.playerIsOnGround ) {
-
-                //this._PlayerVelocity.y = delta * this._settings.gravity;
-
-            } else {
-
-                //this._PlayerVelocity.y += delta * this._settings.gravity;
-
-            }
-            //console.log(this._PlayerVelocity.y);
-            //console.log(this._Player.position.addScaledVector( this._PlayerVelocity, delta ));
-        
-        if(!this._settings.thirdPerson){ //FPS
-            if(this._keys['W'.charCodeAt(0)]){
-                    this._Player.translateZ(this._settings.playerSpeed * delta);
-            }
-            if(this._keys['S'.charCodeAt(0)]){
-                    this._Player.translateZ(-this._settings.playerSpeed * delta);
-            }
-            if(this._keys['A'.charCodeAt(0)]){
-                    this._Player.translateX(this._settings.playerSpeed * delta);
-            }
-            if(this._keys['D'.charCodeAt(0)]){
-                    this._Player.translateX(-this._settings.playerSpeed * delta);
-            }
-            if(this._keys[' '.charCodeAt(0)]){
-                    //if ( playerIsOnGround ) {
-                        this._Player.translateY(this._settings.playerSpeed * delta)
-                        //playerVelocity.y = 10.0;
-                        //playerIsOnGround = false;
-                    //}
-            }
-            
-        }else{ //3rd person
-            if(this._keys['W'.charCodeAt(0)]){
-                this._Player.translateZ(this._settings.playerSpeed * delta);
-            }
-            if(this._keys['S'.charCodeAt(0)]){
-                this._Player.translateZ(-this._settings.playerSpeed * delta);
-            }
-            if(this._keys['A'.charCodeAt(0)]){
-                    this._Player.rotateY(this._settings.playerRotationSpeed * delta);
-            }
-            if(this._keys['D'.charCodeAt(0)]){
-                    this._Player.rotateY(-this._settings.playerRotationSpeed  * delta);
-            }
-            if(this._keys[' '.charCodeAt(0)]){
-                
-                    //if ( playerIsOnGround ) {
-                        this._Player.translateY(this._settings.playerSpeed * delta)
-                        //playerVelocity.y = 10.0;
-                        //playerIsOnGround = false;
-                    //}
-            }
-        }
-
-        
-        
-        this._Player.updateMatrixWorld();
-        
-            
-        if(this._settings.thirdPerson){
-            this._camera.position.sub( this._controls.target );
-            this._controls.target.copy( this._Player.position );
-            this._camera.position.add( this._Player.position );
-            
-            if(this._settings.active_movement){
-                this._camera.rotation.setFromQuaternion(this._Player.quaternion, this._Player.rotation.order);
-                this._camera.position.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
-                this._camera.translateY(100);
-                this._camera.translateZ(-200);
-            }
-            
-                this._controls.target.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
-            
-                this._controls.update();
-
+        if(delta){
+            if(this._keys['W'.charCodeAt(0)] || this._keys['S'.charCodeAt(0)] || this._keys['A'.charCodeAt(0)] || this._keys['D'.charCodeAt(0)]){
+                this._settings.active_movement = 1; //movement_on
             }else{
-                this._camera.position.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
-			
-			this._quaternion.set(0,this._camera.quaternion.y,0,this._camera.quaternion.w);
-            this._Player.rotation.setFromQuaternion(this._quaternion, this._Player.rotation.order);
-			this._Player.rotateY(Math.PI);
-
-        }
-        
-        
-        if(this._settings.gameReady){
-            const Worldbvh = this._BVHcolliderMesh.geometry.boundsTree;
-             
-            //let rayDirection = new THREE.Vector3(0,0,0);
-            //rayDirection.copy(this._VectorDirections.Fwd); 
-            //const rayDistance = 100;
-            //rayDirection.applyEuler(this._Player.rotation);
-            //rayDirection.normalize();
+				this._settings.active_movement = 0;
+			}
             
+            //console.log("delta: "+delta);
+            //console.log(this._Player.position);
+            //console.log(this._PlayerState.playerIsOnGround);
             
-            
-            //this._raycaster.set(this._Player.position, rayDirection.applyQuaternion(this._Player.quaternion).normalize() );
-            //this._raycaster.set(this._Player.position, rayDirection.applyEuler(this._Player.rotation).normalize() );
-            //this._raycaster.set(this._Player.position, rayDirection.set(0,this._Player.rotation.y,0).normalize() );
-            
-            //console.log(new THREE.Vector3().setFromEuler(this._Player.rotation));
-            //console.log(this._Player);
-            
-            //console.log(new THREE.Vector3(1e-10,1e-10,1e-10).applyEuler(this._Player.rotation).normalize());
-            //this._Player.children[1].rotation.set(rayDirection.x, rayDirection.y, rayDirection.z);
-            let rayDirection = new THREE.Vector3(0,0,1e-10).applyEuler(this._Player.rotation);
-            
-            this._raycaster.set(this._Player.position, rayDirection);
-            
-            //test
-            this._Player.children[1].rotation.setFromVector3(rayDirection);
-            
-            const FwdIntersection = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
+                if ( this._PlayerState.playerIsOnGround ) {
+                    this._PlayerVelocity.y = 0;
+                    
+                } else {
+                    this._PlayerVelocity.y += delta * this._settings.gravity * 0.3;
+                }
                 
-            if (FwdIntersection.length > 0) {
-                if (FwdIntersection[0].distance < 35){
+                /*if( this._settings.active_movement ){
+                    if(this._PlayerVelocity.z > 0)
+                        this._PlayerVelocity.z += delta * this._settings.gravity * 0.3;
+                }*/
+                
+                //this._PlayerVelocity.x += delta * this._settings.gravity * 0.3;
+                
+                //console.log(this._PlayerVelocity);
+                
+                
+                
+            
+            if(!this._settings.thirdPerson){ //FPS
+                this._PlayerState.fwdPressed = this._keys['W'.charCodeAt(0)];
+                this._PlayerState.bkdPressed = this._keys['S'.charCodeAt(0)];
+                this._PlayerState.lftPressed = this._keys['A'.charCodeAt(0)];
+                this._PlayerState.rgtPressed = this._keys['D'.charCodeAt(0)];
+
+                //if(this._keys['W'.charCodeAt(0)]){
+                        //this._Player.translateZ(this._settings.playerSpeed * delta);
+                        //this._PlayerVelocity.addScaledVector( this._PlayerVelocity, delta * this._settings.playerSpeed  );
+                //}
+                //if(this._keys['S'.charCodeAt(0)]){
+                        //this._Player.translateZ(-this._settings.playerSpeed * delta);
+                        //this._PlayerVelocity.z = 1.0;
+                //}
+                //if(this._keys['A'.charCodeAt(0)]){
+                        //this._Player.translateX(this._settings.playerSpeed * delta);
+                        //this._PlayerVelocity.z = 1.0;
+                //}
+                //if(this._keys['D'.charCodeAt(0)]){
+                        //this._Player.translateX(-this._settings.playerSpeed * delta);
+                        //this._PlayerVelocity.z = 1.0;
+                //}
+                if(this._keys[' '.charCodeAt(0)]){
+                    if ( this._PlayerState.playerIsOnGround ) {
+                        this._PlayerVelocity.y = 1.0;
+                        this._PlayerState.playerIsOnGround = false;
+                    }
+                }
+                /*if(this._keys[16]){ //lshift
+                        this._Player.translateY(-this._settings.playerSpeed * delta)
+                }*/
+                
+            }else{ //3rd person
+                if(this._keys['W'.charCodeAt(0)]){
+                    this._Player.translateZ(this._settings.playerSpeed * delta);
+                }
+                if(this._keys['S'.charCodeAt(0)]){
+                    this._Player.translateZ(-this._settings.playerSpeed * delta);
+                }
+                if(this._keys['A'.charCodeAt(0)]){
+                        this._Player.rotateY(this._settings.playerRotationSpeed * delta);
+                }
+                if(this._keys['D'.charCodeAt(0)]){
+                        this._Player.rotateY(-this._settings.playerRotationSpeed  * delta);
+                }
+                if(this._keys[' '.charCodeAt(0)]){
+                    
+                    if ( this._PlayerState.playerIsOnGround ) {
+                        this._PlayerVelocity.y = 1.0;
+                        this._PlayerState.playerIsOnGround = false;
+                    }
+                }
+                /*if(this._keys[16]){ //lshift
+                        this._Player.translateY(-this._settings.playerSpeed * delta)
+                }*/
+            }
+
+            this._PlayerDirection.set(
+                this._PlayerState.lftPressed-this._PlayerState.rgtPressed,
+                0,
+                this._PlayerState.fwdPressed-this._PlayerState.bkdPressed
+            );
+            //console.log(this._PlayerDirection);
+            
+            this._PlayerVelocity.x = this._PlayerDirection.x;
+            this._PlayerVelocity.z = this._PlayerDirection.z;
+            
+            const adj_player_direction = new THREE.Vector3().copy(this._PlayerDirection).applyEuler(this._Player.rotation);
+            adj_player_direction.y = 0;
+            console.log(adj_player_direction);
+            //const adj_player_direction = new THREE.Vector3(0,0,1e-10).applyEuler(this._Player.rotation);
+            //this._PlayerVelocity.addScaledVector( player_direction, delta * this._settings.playerSpeed);
+            this._PlayerVelocity.x = adj_player_direction.x;
+            this._PlayerVelocity.z = adj_player_direction.z;
+            
+            this._Player.position.addScaledVector( this._PlayerVelocity, delta * this._settings.playerSpeed );
+            //this._Player.position.addScaledVector( this._PlayerVelocity.copy(adj_player_direction), delta * this._settings.playerSpeed );
+            
+            //console.log(this._PlayerVelocity);
+            
+            
+            this._Player.updateMatrixWorld();
+            
+            if(this._settings.thirdPerson){
+                this._camera.position.sub( this._controls.target );
+                this._controls.target.copy( this._Player.position );
+                this._camera.position.add( this._Player.position );
+                
+                    if(this._settings.active_movement){
+                        this._camera.rotation.setFromQuaternion(this._Player.quaternion, this._Player.rotation.order);
+                        this._camera.position.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
+                        this._camera.translateY(100);
+                        this._camera.translateZ(-200);
+                    }
+                    this._controls.target.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
+                    this._controls.update();
+                }else{
+                    this._camera.position.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
+                    this._quaternion.set(0,this._camera.quaternion.y,0,this._camera.quaternion.w);
+                    this._Player.rotation.setFromQuaternion(this._quaternion, this._Player.rotation.order);
+                    this._Player.rotateY(Math.PI);
+            }
+            
+            
+            if(this._settings.gameReady){
+                const Worldbvh = this._BVHcolliderMesh.geometry.boundsTree;
+                 
+                //let rayDirection = new THREE.Vector3(0,0,0);
+                //rayDirection.copy(this._VectorDirections.Fwd); 
+                //const rayDistance = 100;
+                //rayDirection.applyEuler(this._Player.rotation);
+                //rayDirection.normalize();
+                
+                //this._raycaster.set(this._Player.position, rayDirection.applyQuaternion(this._Player.quaternion).normalize() );
+                //this._raycaster.set(this._Player.position, rayDirection.applyEuler(this._Player.rotation).normalize() );
+                //this._raycaster.set(this._Player.position, rayDirection.set(0,this._Player.rotation.y,0).normalize() );
+                
+                //console.log(new THREE.Vector3().setFromEuler(this._Player.rotation));
+                //console.log(this._Player);
+                
+                //console.log(new THREE.Vector3(1e-10,1e-10,1e-10).applyEuler(this._Player.rotation).normalize());
+                //this._Player.children[1].rotation.set(rayDirection.x, rayDirection.y, rayDirection.z);
+                let rayDirection = new THREE.Vector3(0,0,1e-10).applyEuler(this._Player.rotation);
+                
+                this._raycaster.set(this._Player.position, rayDirection);
+                
+                //test
+                this._Player.children[1].rotation.setFromVector3(rayDirection);
+                
+                const FwdIntersection = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
+                    
+                if (FwdIntersection.length > 0) {
+                    if (FwdIntersection[0].distance < 50){
                         console.log('hit');
-                            this._Player.translateZ(-this._settings.playerSpeed * delta);
-                        }
-                        //console.log(FwdIntersection[0].distance);
-                //console.log('ground!');
+                        this._Player.translateZ(-this._settings.playerSpeed * delta);
+                    }
+                }
+                
+                
+                rayDirection.copy(this._VectorDirections.Down);
+                this._raycaster.set(this._Player.position, rayDirection);
+                const groundIntersections = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
+                
+                if (groundIntersections.length > 0) {
+                    this._PlayerState.playerIsOnGround = groundIntersections[0].distance < 60;
+                    if(this._PlayerState.playerIsOnGround)
+                        this._Player.position.y = this._Player.position.y - groundIntersections[0].distance + 59;
+                }else{
+                    this._PlayerState.playerIsOnGround = false;
+                }
+                
+                if ( this._Player.position.y < - 500 ) {
+                    this._Reset();
+                }
+                
+                //const intersectsWorld = Worldbvh.intersectsBox(this._playerBoundingBox, this._Player.matrixWorld);
+                //console.log(intersectsWorld);
+                //console.log(this._Player.children[0].geometry);
+                
+                /*const intersectsWorld = Worldbvh.intersectsGeometry(this._Player.children[0].geometry, this._Player.matrixWorld);
+                if (intersectsWorld) {
+                  console.log('hit!')// Collision detected
+                } else {
+                  // No collision
+                }*/
+                
             }
-            
-            rayDirection.copy(this._VectorDirections.Down);
-            this._raycaster.set(this._Player.position, rayDirection);
-            const groundIntersections = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
-            
-            if (groundIntersections.length > 0) {
-                if (groundIntersections[0].distance >= 60){
-                            this._PlayerState.playerIsOnGround = false;
-                            //this._Player.translateY(-this._settings.playerSpeed * delta);
-                        }else{
-                            this._PlayerState.playerIsOnGround = true;
-                        }
-                //console.log('ground!');
-            }
-
-
-            //const intersectsWorld = Worldbvh.intersectsBox(this._playerBoundingBox, this._Player.matrixWorld);
-            //console.log(intersectsWorld);
-            //console.log(this._Player.children[0].geometry);
-            
-            //const intersectsWorld = Worldbvh.intersectsGeometry(this._Player.children[0].geometry, this._Player.matrixWorld);
-            /*if (intersectsWorld) {
-              console.log('hit!')// Collision detected
-            } else {
-              // No collision
-            }*/
-            
-        }
-        
+        }    
+	}
+	_Reset(){
+        //this._Player.position.set(0,0,0);
+        this._PlayerState.playerIsOnGround = true;
+		this._Player.position.y = 60;
+		
 	}
     
     _InitWorld(){
