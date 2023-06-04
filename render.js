@@ -6,7 +6,7 @@ import {PointerLockControls} from 'PointerLockControls';
 
 import {ModelLoader} from 'modelLoader';
 
-import GUI from 'lil-gui';
+//import GUI from 'lil-gui';
 
 import { MeshBVH ,computeBoundsTree, disposeBoundsTree, acceleratedRaycast, MeshBVHVisualizer, StaticGeometryGenerator } from 'three-mesh-bvh';
 
@@ -33,7 +33,7 @@ class BasicWorldDemo{
         this._controls;
         this._stats;
         
-        this._city_reflection;
+        //this._city_reflection;
 		this._keys;
 		this._UpdatePlayer();
         
@@ -72,17 +72,8 @@ class BasicWorldDemo{
 		this._Reset;
 		
 		this._coins;
+
         
-        
-        //this.orbit = new OrbitControls( this._camera, this._threejs.domElement );
-        //this.fps = new PointerLockControls(this._camera, this._threejs.domElement);
-        
-		/*this._capsule = new THREE.Group();
-        this._capsule.add(new THREE.Mesh( 
-			new THREE.CapsuleGeometry( 30, 60, 2, 12 ),
-			new THREE.MeshBasicMaterial( {color: 0xffffff, wireframe: true} ))
-		);
-        this._capsule.add(new THREE.AxesHelper(15));*/
         
     }
     
@@ -106,15 +97,21 @@ class BasicWorldDemo{
 			characterVisibility: false,
 			active_movement: false,
 			fog: false,
+            colliders: false,
+            
+            debug: false,
+            menu: false,
             
             worldSize: 5,
             gravity: -10,
             playerSpeed: 500,
 			playerRotationSpeed: 2,
 			carSpeed: 1000,
+            coinsNumber: 0,
             
             gameReady: false,
 		};
+        
         
         
         this._PlayerVelocity = new THREE.Vector3(0,0,0);
@@ -165,6 +162,43 @@ class BasicWorldDemo{
         document.body.appendChild(this._threejs.domElement);
         
         
+        //-----Init Coin------
+        const coin_init = document.createElement("div");
+        coin_init.setAttribute("style", "width: 500px; height:100px; left:0; bottom:0; position: fixed; color:white; font-size:50px; font-family: Consolas");
+
+        //const coin_image = document.createElement("img");
+        //coin_image.setAttribute("style", "width: 100px; height:100px; background-color: black; float:left;");
+        //coin_init.appendChild(coin_image);
+        
+        const coin_number = document.createElement("span");
+        coin_number.id = "coins_total";
+        coin_number.setAttribute("style","float: left");
+        coin_number.innerHTML = "Kryształy: 0";
+        coin_init.appendChild(coin_number);
+        
+        
+        document.body.appendChild(coin_init);
+        //--------------------
+        //-----Init menu------
+        const menu = document.createElement("div");
+        menu.id = "mainMenu";
+        menu.setAttribute("style", "width: 500px; height:500px; right:0; top:20%; position: fixed; background-color: grey; transparent: 0.5; color:white; font-size:26px; font-family: Consolas");
+        menu.style.visibility = "hidden";
+        
+        document.body.appendChild(menu);
+        //--------------------
+        //-----Debug menu------
+        const debug_menu = document.createElement("div");
+        debug_menu.id = "debugMenu";
+        debug_menu.setAttribute("style", "width: 300px; height:500px; left:0; top:20%; position: fixed; background-color: orange; color:white; font-size:26px; font-family: Consolas");
+        debug_menu.style.visibility = "hidden";
+        
+        
+        
+        document.body.appendChild(debug_menu);
+        //--------------------
+        
+        
         
         const fov = 60;
         const aspect = 16/9;
@@ -202,17 +236,17 @@ class BasicWorldDemo{
         
       
         const light = new THREE.DirectionalLight(0xFFFFFF, 1);
-			light.position.set (10000, 10000, 10000);
+			light.position.set (15000, 15000, 15000);
 			light.target.position.set(0, 0, 0);
 			light.castShadow = true;
 			light.shadow.mapSize.width = 2048;
 			light.shadow.mapSize.height = 2048;
 			light.shadow.camera.near = 0;
 			light.shadow.camera.far = 100000;
-			light.shadow.camera.left = -10000;
-			light.shadow.camera.right = 10000;
-			light.shadow.camera.top = 10000;
-			light.shadow.camera.bottom = -10000;
+			light.shadow.camera.left = -15000;
+			light.shadow.camera.right = 15000;
+			light.shadow.camera.top = 15000;
+			light.shadow.camera.bottom = -15000;
 			
 		//this._scene.add(new THREE.CameraHelper(light.shadow.camera));
         
@@ -225,8 +259,8 @@ class BasicWorldDemo{
 		const texture_loader = new THREE.TextureLoader();
 		const sky = texture_loader.load('./Images/SkyBox4K.png');
         sky.mapping = THREE.SphericalReflectionMapping;
-		this._city_reflection = texture_loader.load('./Images/panorama-cityscape.jpg');
-        this._city_reflection.mapping = THREE.EquirectangularReflectionMapping;
+		//this._city_reflection = texture_loader.load('./Images/panorama-cityscape.jpg');
+        //this._city_reflection.mapping = THREE.EquirectangularReflectionMapping;
         //this._city_reflection.mapping = THREE.EquirectangularRefractionMapping;
 		
 		
@@ -251,8 +285,8 @@ class BasicWorldDemo{
 			new THREE.CapsuleGeometry( 30, 60, 2, 12 ),
 			new THREE.MeshBasicMaterial( {color: 0xffffff, wireframe: true} )
 		);
-        this._CharacterCollider.geometry.computeBoundingSphere();
-        
+        //this._CharacterCollider.geometry.computeBoundingSphere();
+        this._CharacterCollider.visible = false;
 		
 		new ModelLoader('models/character.glb', (e) => {
             let lego_char = e.scene;
@@ -272,7 +306,7 @@ class BasicWorldDemo{
             lego_char.translateY(-60);
 			//this._CharacterCollider.translateY(2); //wazne przy kolizjach
 			this._Player.add(this._CharacterCollider);
-            this._Player.add(new THREE.AxesHelper(80));
+            //this._Player.add(new THREE.AxesHelper(80));
             this._Player.add(lego_char);
 		});
 		
@@ -282,40 +316,107 @@ class BasicWorldDemo{
 		this._Player.position.set(0,60,0);
 		this._scene.add( this._Player );
 
-
-        const gui = new GUI();
+        //------DEBUG-----------
         
-        const physic_settings = gui.addFolder('Physic');
-        physic_settings.add( this._settings, 'gravity', - 10, 10, 1 ).onChange( v => {
-            this._settings.gravity = parseFloat( v );
+        var debug = document.getElementById("debugMenu");
+        debug.innerHTML += "Gravity: <br>";
+        
+        const Gravit = document.createElement("input");
+        Gravit.id = "gravit";
+        Gravit.type = "range";
+        Gravit.min = "-10";
+        Gravit.max = "10";
+        Gravit.value = "-10";
+        debug.appendChild(Gravit);
+        
+        debug.innerHTML += "<br>Player Speed: <br>";
+        const Pspeed = document.createElement("input");
+        Pspeed.id = "pspeed";
+        Pspeed.type = "range";
+        Pspeed.min = "1";
+        Pspeed.max = "1000";
+        Pspeed.value = "500";
+        debug.appendChild(Pspeed);
+        
+        debug.innerHTML += "<br>Fog enabled: ";
+        const fog_settings = document.createElement("input");
+        fog_settings.id = "fog_check";
+        fog_settings.type = "checkbox";
+        fog_settings.checked = this._settings.fog;
+        debug.appendChild(fog_settings);
+        
+        debug.innerHTML += "<br>Fog distance: <br>";
+        fog_settings.id = "fog_dist";
+        fog_settings.type = "range";
+        fog_settings.min = "0";
+        fog_settings.max = "5000";
+        fog_settings.value = "500";
+        fog_settings.disabled = 1-this._settings.fog;
+        debug.appendChild(fog_settings);
+        
+        debug.innerHTML += "<br>Colliders: ";
+        const Collid = document.createElement("input");
+        Collid.id = "colliders";
+        Collid.type = "checkbox";
+        Collid.checked = this._settings.colliders;
+        debug.appendChild(Collid);
+        
+        
+        
+        document.addEventListener("input", (e) => {
+            //console.log(v.target.id);
+            switch(e.target.id){
+                case "gravit":
+                    this._settings.gravity = parseFloat( e.target.value );
+                break;
+                case "pspeed": 
+                    this._settings.playerSpeed = parseFloat( e.target.value );
+                break;
+                case "fog_check":
+                    if(e.target.checked){
+                        this._settings.fog = true;
+                        this._scene.fog = true;
+                        document.getElementById('fog_dist').disabled = false;
+                        this._camera.far = 7001.0;
+                        this._camera.updateProjectionMatrix();
+                        this._scene.fog = new THREE.Fog(0xFFFFFF, this._camera.near, this._camera.far);
+                        
+                    }else{
+                        this._settings.fog = false;
+                        this._scene.fog = false;
+                        document.getElementById('fog_dist').disabled = true;
+                        this._camera.far = 1000001.0;
+                        this._camera.updateProjectionMatrix();
+                    }
+                break;
+                case "fog_dist":
+                    //if(this._settings.fog){
+                        this._camera.far = parseFloat( e.target.value );
+                        this._camera.updateProjectionMatrix();
+                        //this._scene.fog.near = this._camera.near;
+                        this._scene.fog.far = this._camera.far;
+                    //}
+                
+                break;
+                
+                case "colliders":
+                    if(e.target.checked){
+                        this._settings.colliders = true;
+                        this._BVHcolliderMesh.visible = true;
+                        this._CharacterCollider.visible = true;
+                        
+                    }else{
+                        this._settings.colliders = false;
+                        this._BVHcolliderMesh.visible = false;
+                        this._CharacterCollider.visible = false;
+                    }
+                break;
+                
+            }
         });
-        physic_settings.add( this._settings, 'playerSpeed', 1, 1000 );
-        physic_settings.open();
         
-		const fog_settings = gui.addFolder('Fog_settings');
-		fog_settings.add(this._settings,'fog').onChange(() => {
-			this._scene.fog = 1 - this._scene.fog;
-			
-			if(this._settings.fog){
-				//this._camera.far = 15001.0;
-				this._camera.far = 7001.0;
-				this._camera.updateProjectionMatrix();
-				this._scene.fog = new THREE.Fog(0xFFFFFF, this._camera.near, this._camera.far);
-				
-			}else{
-				this._scene.fog = 0;
-				this._camera.far = 1000001.0;
-				this._camera.updateProjectionMatrix();
-			}
-		});
-		fog_settings.add(this._camera,'far', 0, 5000).onChange(() => {
-			if(this._settings.fog){
-				this._camera.updateProjectionMatrix();
-				this._scene.fog.near = this._camera.near;
-				this._scene.fog.far = this._camera.far;
-				
-			}
-		});
+        
+        //-----------------------------------------
 		
         this._RAF();
         
@@ -369,6 +470,21 @@ class BasicWorldDemo{
 						this._controls = new PointerLockControls(this._camera, this._threejs.domElement);
 					}
 				break;
+                case 'KeyI':
+                    this._settings.debug = 1-this._settings.debug;
+                    if(this._settings.debug)
+                        document.getElementById("debugMenu").style.visibility = "visible";
+                    else
+                        document.getElementById("debugMenu").style.visibility = "hidden";
+                break;
+                case 'KeyP':
+                console.log(this._settings.menu);
+                    this._settings.menu = 1-this._settings.menu;
+                    if(this._settings.menu)
+                        document.getElementById("mainMenu").style.visibility = "visible";
+                    else
+                        document.getElementById("mainMenu").style.visibility = "hidden";
+                break;
                 
 			}
 
@@ -548,10 +664,21 @@ class BasicWorldDemo{
 				  this._Player.position.addScaledVector( this._PlayerVelocity, delta * this._settings.playerSpeed );
                 }*/
                 
+                let coin_handle = document.getElementById("coins_total");
+                
                 //--coins
+                //let t = this._clock.getElapsedTime();
                 for(let i=0;i<this._coins.children.length;i++){
+                    this._coins.children[i].rotation.x += 0.1;
+                    //this._coins.children[i].rotation.y += 0.1;
+                    this._coins.children[i].rotation.z += 0.1;
+                    //this._coins.children[i].position.y += Math.sin( t * 2 ) * 3;
+                    
                     if (this._Player.position.distanceTo(this._coins.children[i].position) < 50) {
                             console.log('collected!');
+                            this._settings.coinsNumber += 1;
+                            coin_handle.innerHTML = "Kryształy: "+this._settings.coinsNumber;
+                            
                             this._coins.children[i].clear();
                             this._coins.children[i].removeFromParent();
 
@@ -812,14 +939,15 @@ class BasicWorldDemo{
                     this._BVHcolliderMesh.material.wireframe = true;
                     this._BVHcolliderMesh.material.opacity = 1;
                     this._BVHcolliderMesh.material.transparent = true;
+                    this._BVHcolliderMesh.visible = this._settings.colliders;
                     //console.log(this._BVHcolliderMesh);
 
                     this._visualizerBVH = new MeshBVHVisualizer( this._BVHcolliderMesh, 5 );
                     
                     this._scene.add( this._World );
                     //this._scene.add( this._WorldColliders );
-                   // this._scene.add( this._visualizerBVH );
-                   // this._scene.add( this._BVHcolliderMesh );
+                    //this._scene.add( this._visualizerBVH );
+                    this._scene.add( this._BVHcolliderMesh );
                     
                     
                     console.log(this._World);
