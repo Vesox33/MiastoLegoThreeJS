@@ -130,7 +130,8 @@ class BasicWorldDemo{
         this._clock = new THREE.Clock();
         
 
-        this._tileSet = ["skyscraper_1det"];
+        //this._tileSet = ["skyscraper_1det","workshop","airport","police_station", "river"];
+        this._tileSet = ["workshop","airport","police_station", "river"];
 		
 		this._coins = new THREE.Group();
         this._coins.name = "Coins";
@@ -218,7 +219,7 @@ class BasicWorldDemo{
         this._scene.add(light);
 		
         
-        const ambientlight = new THREE.AmbientLight( 0xffffff, 0.1 );
+        const ambientlight = new THREE.AmbientLight( 0xffffff, 0.4 );
 		this._scene.add(ambientlight);
         
 		const texture_loader = new THREE.TextureLoader();
@@ -307,7 +308,7 @@ class BasicWorldDemo{
 				this._camera.updateProjectionMatrix();
 			}
 		});
-		fog_settings.add(this._camera,'far', 0, 20000).onChange(() => {
+		fog_settings.add(this._camera,'far', 0, 5000).onChange(() => {
 			if(this._settings.fog){
 				this._camera.updateProjectionMatrix();
 				this._scene.fog.near = this._camera.near;
@@ -516,7 +517,7 @@ class BasicWorldDemo{
                     this._controls.target.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
                     this._controls.update();
                 }else{
-                    this._camera.position.set(this._Player.position.x, this._Player.position.y, this._Player.position.z);
+                    this._camera.position.set(this._Player.position.x, this._Player.position.y+20, this._Player.position.z);
                     this._quaternion.set(0,this._camera.quaternion.y,0,this._camera.quaternion.w);
                     this._Player.rotation.setFromQuaternion(this._quaternion, this._Player.rotation.order);
                     this._Player.rotateY(Math.PI);
@@ -662,6 +663,8 @@ class BasicWorldDemo{
             new ModelLoader(model_high, (mh) => {
             new ModelLoader(model_low, (ml) => {
             new ModelLoader(model_collider, (mc) => {
+                
+                
                 let model_high = mh.scene;
                 let model_low = ml.scene;
                 let model_collider = mc.scene;
@@ -670,16 +673,35 @@ class BasicWorldDemo{
                 model_low.name = "low";
                 model_collider.name = "collider";
                 
-                let ground_high = model_high.children[0];
+                this._renderedColliders.add(model_collider.clone());
+                
+                /*let ground_high = model_high.children[0];
                 let tower_high = model_high.children[1];
                 
                 let ground_low = model_low.children[0];
-                let tower_low = model_low.children[1];
+                let tower_low = model_low.children[1];*/
                 
-                this._renderedColliders.add(model_collider.clone());
-                
+                    model_high.traverse((node) => {
+                        if(node.isMesh) {
+                            
+                            node.geometry.computeVertexNormals();
+                            node.receiveShadow = true;
+                            node.castShadow = true;
+                            
+                            //node.material.envMap = new THREE.Color(0xffffff);
+                            node.material.flatShading = false;
+                            node.material.roughness = 0; //0.3
+                            node.material.metalic = 0.2;
+                            
+                        }
+                    });
                     
-                    ground_high.traverse((node) => {
+                    model_low.traverse((node) => {
+                        if(node.isMesh) {
+                            node.material.flatShading = true;
+                        }
+                    });
+                    /*ground_high.traverse((node) => {
                         if(node.isMesh) {
                             node.geometry.computeVertexNormals();
                             node.receiveShadow = true;
@@ -716,7 +738,7 @@ class BasicWorldDemo{
                             node.material.envMap = this._city_reflection;
                             node.material.flatShading = true;
                         }
-                    });
+                    });*/
                     
                     
                  /* STANDARD RENDERING */
@@ -736,113 +758,120 @@ class BasicWorldDemo{
                     
                     this._renderedTiles.add( PlytkaLOD );
                     
+                
+                
+                if(this._renderedTiles.children.length == this._tileSet.length){
                     let _positions = [];
-			
-                let i = 0;
                 
-                for(var worldx=0; worldx<this._settings.worldSize; worldx++){
-                for(var worldz=0; worldz<this._settings.worldSize; worldz++){
-                    _positions[i] = new THREE.Vector3(model_length*worldx , 0, model_length*worldz);
-                    i++;
-                }
-                }
-                
-                for(let i=0;i<_positions.length;i++){
+                    let i = 0;
                     
-                    let tile = this._renderedTiles.children[0];
-                    let tile_collider = this._renderedColliders.children[0];
-
-                    tile.position.x = _positions[i].x; //6*(182*5) // 6*(5*32 +22)*5 
-                    tile.position.z = _positions[i].z;
-                    tile.updateMatrix();
-                    tile.updateMatrixWorld();
-                    
-                    tile_collider.position.x = _positions[i].x; //6*(182*5) // 6*(5*32 +22)*5 
-                    tile_collider.position.z = _positions[i].z;
-                    tile_collider.updateMatrix();
-                    tile_collider.updateMatrixWorld();
-                    
-                    this._World.add( tile.clone() );
-                    this._WorldColliders.add( tile_collider.clone() );
-
-                }
-                
-                
-                const staticGenerator = new StaticGeometryGenerator( this._WorldColliders );
-                staticGenerator.name = "staticGenerator";
-                //staticGenerator.applyWorldTransforms = true;
-                staticGenerator.attributes = [ 'matrixWorld', 'positions' ];
-                
-                //console.log(staticGenerator);
-
-                const mergedGeo = staticGenerator.generate();
-                mergedGeo.name = "mergedGeo";
-                mergedGeo.boundsTree = new MeshBVH( mergedGeo, 20 );
-                //console.log(mergedGeo);
-                
-                this._BVHcolliderMesh = new THREE.Mesh( mergedGeo );
-                this._BVHcolliderMesh.name = "_BVHcolliderMesh";
-                this._BVHcolliderMesh.material.wireframe = true;
-                this._BVHcolliderMesh.material.opacity = 1;
-                this._BVHcolliderMesh.material.transparent = true;
-                //console.log(this._BVHcolliderMesh);
-
-                this._visualizerBVH = new MeshBVHVisualizer( this._BVHcolliderMesh, 20 );
-                
-                this._scene.add( this._World );
-                //this._scene.add( this._WorldColliders );
-                this._scene.add( this._visualizerBVH );
-                this._scene.add( this._BVHcolliderMesh );
-                
-                
-                console.log(this._World);
-                console.log(this._WorldColliders);
-                console.log(this._scene);
-				
-				
-				let CoinRayDir = new THREE.Vector3(0,-1,0);
-				let CoinRaycaster = new THREE.Raycaster();
-				CoinRaycaster.firstHitOnly = true;
-				
-				
-				const coin = new THREE.Mesh(
-					new THREE.SphereGeometry(30,16,16),
-					new THREE.MeshStandardMaterial({ color: 0xffff00 })
-				);
-                
-                
-				
-				const coins_length = ((5*32)+22)*20;
-				
-				for(let k=0; k<1000; k++){
-					
-					//Math.random() * (max - min) + min;
-					coin.position.set(
-						Math.random() * (coins_length*this._settings.worldSize - coins_length) + 0,
-						1000,
-						Math.random() * (coins_length*this._settings.worldSize - coins_length) + 0
-					);
-                    coin.updateMatrixWorld();
-                    
-                    
-                    CoinRaycaster.set(coin.position, CoinRayDir);
-                    const Coin_hit_ground = CoinRaycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
-                    if (Coin_hit_ground.length > 0) {
-                        coin.position.y = coin.position.y-Coin_hit_ground[0].distance+60;
+                    for(var worldx=0; worldx<this._settings.worldSize; worldx++){
+                    for(var worldz=0; worldz<this._settings.worldSize; worldz++){
+                        _positions[i] = new THREE.Vector3(model_length*worldx , 0, model_length*worldz);
+                        i++;
                     }
-					
-					coin.updateMatrixWorld();
-					
+                    }
                     
-					this._coins.add(coin.clone());
-					
-				}
-				
-				this._scene.add(this._coins);
-				
-                
-                this._settings.gameReady = true;
+                    for(let i=0;i<_positions.length;i++){
+                        let randomly = Math.floor(Math.random() * this._renderedTiles.children.length);
+                        
+                        let tile = this._renderedTiles.children[randomly];
+                        let tile_collider = this._renderedColliders.children[randomly];
+
+                        tile.position.x = _positions[i].x; //6*(182*5) // 6*(5*32 +22)*5 
+                        tile.position.z = _positions[i].z;
+                        tile.updateMatrix();
+                        tile.updateMatrixWorld();
+                        
+                        tile_collider.position.x = _positions[i].x; //6*(182*5) // 6*(5*32 +22)*5 
+                        tile_collider.position.z = _positions[i].z;
+                        tile_collider.updateMatrix();
+                        tile_collider.updateMatrixWorld();
+                        
+                        this._World.add( tile.clone() );
+                        this._WorldColliders.add( tile_collider.clone() );
+
+                    }
                     
+                    
+                    const staticGenerator = new StaticGeometryGenerator( this._WorldColliders );
+                    //const staticGenerator = new StaticGeometryGenerator( this._World);
+                    staticGenerator.name = "staticGenerator";
+                    //staticGenerator.applyWorldTransforms = true;
+                    staticGenerator.attributes = [ 'matrixWorld', 'positions' ];
+                    
+                    //console.log(staticGenerator);
+
+                    const mergedGeo = staticGenerator.generate();
+                    mergedGeo.name = "mergedGeo";
+                    mergedGeo.boundsTree = new MeshBVH( mergedGeo, 5 );
+                    //console.log(mergedGeo);
+                    
+                    this._BVHcolliderMesh = new THREE.Mesh( mergedGeo );
+                    this._BVHcolliderMesh.name = "_BVHcolliderMesh";
+                    this._BVHcolliderMesh.material.wireframe = true;
+                    this._BVHcolliderMesh.material.opacity = 1;
+                    this._BVHcolliderMesh.material.transparent = true;
+                    //console.log(this._BVHcolliderMesh);
+
+                    this._visualizerBVH = new MeshBVHVisualizer( this._BVHcolliderMesh, 5 );
+                    
+                    this._scene.add( this._World );
+                    //this._scene.add( this._WorldColliders );
+                   // this._scene.add( this._visualizerBVH );
+                   // this._scene.add( this._BVHcolliderMesh );
+                    
+                    
+                    console.log(this._World);
+                    console.log(this._WorldColliders);
+                    console.log(this._scene);
+                    
+                    
+                    let CoinRayDir = new THREE.Vector3(0,-1,0);
+                    let CoinRaycaster = new THREE.Raycaster();
+                    CoinRaycaster.firstHitOnly = true;
+                    
+                    
+                    const coin = new THREE.Mesh(
+                        new THREE.IcosahedronGeometry( 30 ),
+                        //new THREE.MeshStandardMaterial({ color: 0xffff00 })
+                        new THREE.MeshNormalMaterial()
+                        
+                    );
+                    
+                    
+                    
+                    const coins_length = ((5*32)+22)*20;
+                    
+                    for(let k=0; k<1000; k++){
+                        
+                        //Math.random() * (max - min) + min;
+                        coin.position.set(
+                            Math.random() * (coins_length*this._settings.worldSize - coins_length) + 0,
+                            1000,
+                            Math.random() * (coins_length*this._settings.worldSize - coins_length) + 0
+                        );
+                        coin.updateMatrixWorld();
+                        
+                        
+                        CoinRaycaster.set(coin.position, CoinRayDir);
+                        const Coin_hit_ground = CoinRaycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
+                        if (Coin_hit_ground.length > 0) {
+                            coin.position.y = coin.position.y-Coin_hit_ground[0].distance+60;
+                        }
+                        
+                        coin.updateMatrixWorld();
+                        
+                        
+                        this._coins.add(coin.clone());
+                        
+                    }
+                    
+                    this._scene.add(this._coins);
+                    
+                    
+                    this._settings.gameReady = true;
+                }
             });
             });
             });
