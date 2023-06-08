@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+ import * as THREE from 'three';
 import Stats from 'stats';
 
 import {OrbitControls} from 'OrbitControls';
@@ -6,7 +6,6 @@ import {PointerLockControls} from 'PointerLockControls';
 
 import {ModelLoader} from 'modelLoader';
 
-//import GUI from 'lil-gui';
 
 import { MeshBVH ,computeBoundsTree, disposeBoundsTree, acceleratedRaycast, MeshBVHVisualizer, StaticGeometryGenerator } from 'three-mesh-bvh';
 
@@ -72,12 +71,18 @@ class BasicWorldDemo{
 		this._Reset;
 		
 		this._coins;
+		
+		this._Loader;
+		
+		this.char_model;
+        
+        this.mixer;
+        this.clips;
 
-        
-        
+
     }
     
-    _Initialize(){
+    async _Initialize(){
         
         
         this._PlayerState = {
@@ -141,6 +146,8 @@ class BasicWorldDemo{
         
         this._WorldColliders = new THREE.Group();
         this._WorldColliders.name = "WorldColliders";
+		
+		this._Loader = new ModelLoader();
 		
         
 		
@@ -278,7 +285,7 @@ class BasicWorldDemo{
 		this._scene.add(this._skybox);
 		
         
-        this._InitWorld();
+        await this._InitWorld();
         
 		
         this._CharacterCollider = new THREE.Mesh( 
@@ -288,14 +295,39 @@ class BasicWorldDemo{
         //this._CharacterCollider.geometry.computeBoundingSphere();
         this._CharacterCollider.visible = false;
 		
-		new ModelLoader('models/character.glb', (e) => {
-            let lego_char = e.scene;
-			
-                lego_char.traverse((node) => {
+		//let char_model = await this._Loader.loadModel('models/character.glb');
+		this.char_model = await this._Loader.loadModel('models/delsin.glb');
+        //console.log(this.char_model);
+        
+        this.clips = this.char_model.animations;
+        console.log(this.clips);
+        this.char_model = this.char_model.scene.children[0];
+        this.mixer = new THREE.AnimationMixer(this.char_model);
+        
+        
+        this.animations = {
+            breakdance: this.mixer.clipAction(this.clips[0]),
+            fall: this.mixer.clipAction(this.clips[1]),
+            run: this.mixer.clipAction(this.clips[2]),
+            idle: this.mixer.clipAction(this.clips[3]),
+            run_back: this.mixer.clipAction(this.clips[4]),
+            
+            tpose: this.mixer.clipAction(this.clips[5]),
+        }
+		
+		//this.char_model = this.char_model.scene;
+		
+        this.char_model.translateY(-60);
+        
+		
+                this.char_model.traverse((node) => {
 					if(node.isMesh) {
                         node.geometry.computeVertexNormals();
 						node.receiveShadow = true;
                         node.castShadow = true;
+                        
+                        node.material.emissive = new THREE.Color(0xFFFFFF);
+                        node.material.emissiveIntensity = 0.5;
                         
                         node.material.flatShading = false;
                         node.material.roughness = 0.7;
@@ -303,14 +335,13 @@ class BasicWorldDemo{
                     }
                 });
                 
-            lego_char.translateY(-60);
-			//this._CharacterCollider.translateY(2); //wazne przy kolizjach
-			this._Player.add(this._CharacterCollider);
-            //this._Player.add(new THREE.AxesHelper(80));
-            this._Player.add(lego_char);
-		});
+        
+		//this._CharacterCollider.translateY(2); //wazne przy kolizjach
+        //this._Player.add(new THREE.AxesHelper(80));
+        this._Player.add(this.char_model);
 		
-		//this._playerBoundingBox = new THREE.Box3().setFromObject(this._CharacterCollider);
+		
+		this._Player.add(this._CharacterCollider);
 		
 		this._Player.visible = false;
 		this._Player.position.set(0,60,0);
@@ -528,90 +559,126 @@ class BasicWorldDemo{
 
 	_UpdatePlayer( delta ){
         if(delta){
+            
+            this._PlayerState.fwdPressed = this._keys['W'.charCodeAt(0)];
+            this._PlayerState.bkdPressed = this._keys['S'.charCodeAt(0)];
+            
+			
             if(this._keys['W'.charCodeAt(0)] || this._keys['S'.charCodeAt(0)] || this._keys['A'.charCodeAt(0)] || this._keys['D'.charCodeAt(0)]){
-                this._settings.active_movement = 1; //movement_on
+                this._settings.active_movement = 1; //movement_on   
             }else{
 				this._settings.active_movement = 0;
 			}
             
-            //console.log("delta: "+delta);
-            //console.log(this._Player.position);
-            //console.log(this._PlayerState.playerIsOnGround);
-            
-                if ( this._PlayerState.playerIsOnGround ) {
-                    this._PlayerVelocity.y = 0;
+            if(this.mixer){
+                if(this._keys['W'.charCodeAt(0)]){
+                    this.animations.idle.stop();
+                    this.animations.breakdance.stop();
+                    this.animations.run_back.stop();
                     
-                } else {
-                    this._PlayerVelocity.y += delta * this._settings.gravity * 0.3;
+                    this.animations.run.play();
+                    
+                } 
+                if(this._keys['S'.charCodeAt(0)]){
+                    this.animations.idle.stop();
+                    this.animations.breakdance.stop();
+                    this.animations.run.stop();
+                    
+                    this.animations.run_back.play();
+                    
                 }
-                
-                /*if( this._settings.active_movement ){
-                    if(this._PlayerVelocity.z > 0)
-                        this._PlayerVelocity.z += delta * this._settings.gravity * 0.3;
-                }*/
-                
-                //this._PlayerVelocity.x += delta * this._settings.gravity * 0.3;
-                
-                //console.log(this._PlayerVelocity);
-                
-                
-                
-            
-            if(!this._settings.thirdPerson){ //FPS
-                this._PlayerState.fwdPressed = this._keys['W'.charCodeAt(0)];
-                this._PlayerState.bkdPressed = this._keys['S'.charCodeAt(0)];
-                this._PlayerState.lftPressed = this._keys['A'.charCodeAt(0)];
-                this._PlayerState.rgtPressed = this._keys['D'.charCodeAt(0)];
+                if(this._keys['A'.charCodeAt(0)] && !this._keys['W'.charCodeAt(0)] && !this._keys['S'.charCodeAt(0)]){
+                    this.animations.idle.stop();
+                    this.animations.run.stop();
+                    this.animations.run_back.stop();
+                    
+                    this.animations.breakdance.play();
+                    
+                }
+                if(this._keys['D'.charCodeAt(0)] && !this._keys['W'.charCodeAt(0)] && !this._keys['S'.charCodeAt(0)]){
+                    this.animations.idle.stop();
+                    this.animations.run.stop();
+                    this.animations.run_back.stop();
+                    
+                    this.animations.breakdance.play();
 
-                if(this._keys[' '.charCodeAt(0)]){
-                    if ( this._PlayerState.playerIsOnGround ) {
-                        this._PlayerVelocity.y = 1.0;
-                        this._PlayerState.playerIsOnGround = false;
-                    }
                 }
-                /*if(this._keys[16]){ //lshift
-                        this._Player.translateY(-this._settings.playerSpeed * delta)
-                }*/
-                
-            }else{ //3rd person
-                this._PlayerState.fwdPressed = this._keys['W'.charCodeAt(0)];
-                this._PlayerState.bkdPressed = this._keys['S'.charCodeAt(0)];
-                
-                if(this._keys['A'.charCodeAt(0)]){
-                        this._Player.rotateY(this._settings.playerRotationSpeed * delta);
-                }
-                if(this._keys['D'.charCodeAt(0)]){
-                        this._Player.rotateY(-this._settings.playerRotationSpeed  * delta);
-                }
-                if(this._keys[' '.charCodeAt(0)]){
+                if(!this._settings.active_movement){
+                    this.animations.run.stop();
+                    this.animations.run_back.stop();
+                    this.animations.breakdance.stop();
                     
-                    if ( this._PlayerState.playerIsOnGround ) {
-                        this._PlayerVelocity.y = 1.0;
-                        this._PlayerState.playerIsOnGround = false;
-                    }
+                    this.animations.idle.play();
+                    
                 }
-                /*if(this._keys[16]){ //lshift
-                        this._Player.translateY(-this._settings.playerSpeed * delta)
-                }*/
+                    
+                this.mixer.update(delta);
+            }
+            
+            
+            
+            if ( this._PlayerState.playerIsOnGround ) {
+                this._PlayerVelocity.y = 0;
+                this.animations.fall.stop();
+            } else {
+                this._PlayerVelocity.y += delta * this._settings.gravity * 0.3;
+                this.animations.idle.stop();
+                this.animations.run.stop();
+                this.animations.fall.play();
             }
 
+            if(!this._settings.thirdPerson){ //FPS
+                this._PlayerState.lftPressed = this._keys['A'.charCodeAt(0)];
+                this._PlayerState.rgtPressed = this._keys['D'.charCodeAt(0)];
+                
+                if(this._keys[' '.charCodeAt(0)]){
+                    if ( this._PlayerState.playerIsOnGround ) {
+                        this._PlayerVelocity.y = 1.0;
+                        this._PlayerState.playerIsOnGround = false;
+                    }
+                }
+                /*if(this._keys[16]){ //lshift
+                        this._Player.translateY(-this._settings.playerSpeed * delta)
+                }*/
+            }else{ //3rd person
+                //this._PlayerState.lftPressed = this._keys['A'.charCodeAt(0)];
+                //this._PlayerState.rgtPressed = this._keys['D'.charCodeAt(0)];
+                
+                if(this._keys['A'.charCodeAt(0)]){
+                    this._Player.rotateY(this._settings.playerRotationSpeed * delta);
+                }
+                if(this._keys['D'.charCodeAt(0)]){
+                    this._Player.rotateY(-this._settings.playerRotationSpeed  * delta);
+                }
+                if(this._keys[' '.charCodeAt(0)]){
+                    if ( this._PlayerState.playerIsOnGround ) {
+                        this._PlayerVelocity.y = 1.0;
+                        this._PlayerState.playerIsOnGround = false;
+                    }
+                }
+                /*if(this._keys[16]){ //lshift
+                        this._Player.translateY(-this._settings.playerSpeed * delta)
+                }*/
+                
+            }
+            
             this._PlayerDirection.set(
-                this._PlayerState.lftPressed-this._PlayerState.rgtPressed,
-                0,
-                this._PlayerState.fwdPressed-this._PlayerState.bkdPressed
-            );
-            //console.log(this._PlayerDirection);
-            
-            this._PlayerVelocity.x = this._PlayerDirection.x;
-            this._PlayerVelocity.z = this._PlayerDirection.z;
-            
-            const adj_player_direction = new THREE.Vector3().copy(this._PlayerDirection).applyEuler(this._Player.rotation);
-            adj_player_direction.y = 0;
-            //console.log(adj_player_direction);
-			
-            this._PlayerVelocity.x = adj_player_direction.x;
-            this._PlayerVelocity.z = adj_player_direction.z;
-            
+                    this._PlayerState.lftPressed-this._PlayerState.rgtPressed,
+                    0,
+                    this._PlayerState.fwdPressed-this._PlayerState.bkdPressed
+                );
+                //console.log(this._PlayerDirection);
+                
+                this._PlayerVelocity.x = this._PlayerDirection.x;
+                this._PlayerVelocity.z = this._PlayerDirection.z;
+                
+                const adj_player_direction = new THREE.Vector3().copy(this._PlayerDirection).applyEuler(this._Player.rotation);
+                adj_player_direction.y = 0;
+                //console.log(adj_player_direction);
+                
+                this._PlayerVelocity.x = adj_player_direction.x;
+                this._PlayerVelocity.z = adj_player_direction.z;
+
             this._Player.position.addScaledVector( this._PlayerVelocity, delta * this._settings.playerSpeed );
             
             //console.log(this._PlayerVelocity);
@@ -693,7 +760,7 @@ class BasicWorldDemo{
                 rayDirection.set(0,0,1e-10).applyEuler(this._Player.rotation);
                 this._raycaster.set(this._Player.position, rayDirection);
                 //test
-                this._Player.children[1].rotation.setFromVector3(rayDirection);
+                this._Player.children[0].rotation.setFromVector3(rayDirection);
                 const FwdIntersection = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
                     
                 if (FwdIntersection.length > 0) {
@@ -707,7 +774,7 @@ class BasicWorldDemo{
 				rayDirection.set(0,0,-1e-10).applyEuler(this._Player.rotation);
                 this._raycaster.set(this._Player.position, rayDirection);
                 //test
-                this._Player.children[1].rotation.setFromVector3(rayDirection);
+                this._Player.children[0].rotation.setFromVector3(rayDirection);
                 const BkdIntersection = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
                     
                 if (BkdIntersection.length > 0) {
@@ -721,7 +788,7 @@ class BasicWorldDemo{
 				rayDirection.set(1e-10,0,0).applyEuler(this._Player.rotation);
                 this._raycaster.set(this._Player.position, rayDirection);
                 //test
-                this._Player.children[1].rotation.setFromVector3(rayDirection);
+                this._Player.children[0].rotation.setFromVector3(rayDirection);
                 const RgtIntersection = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
                     
                 if (RgtIntersection.length > 0) {
@@ -735,7 +802,7 @@ class BasicWorldDemo{
 				rayDirection.set(-1e-10,0,0).applyEuler(this._Player.rotation);
                 this._raycaster.set(this._Player.position, rayDirection);
                 //test
-                this._Player.children[1].rotation.setFromVector3(rayDirection);
+                this._Player.children[0].rotation.setFromVector3(rayDirection);
                 const LftIntersection = this._raycaster.intersectObjects( [this._BVHcolliderMesh] ); //!! [ ]
                     
                 if (LftIntersection.length > 0) {
@@ -776,37 +843,35 @@ class BasicWorldDemo{
 		
 	}
     
-    _InitWorld(){
+     async _InitWorld(){
+        const loader = new ModelLoader();
+        
         this._renderedTiles = new THREE.Group();
         
         this._renderedColliders = new THREE.Group();
         
-        this._tileSet.forEach((PLYTKA) => {
-            let model_high = 'models/world/high/'+PLYTKA+'_high'+'.glb';
-            let model_low = 'models/world/low/'+PLYTKA+'_low'+'.glb';
-            let model_collider = 'models/world/colliders/'+PLYTKA+'_collider'+'.glb';
+        await Promise.all(this._tileSet.map(async (PLYTKA) => {
+            let name_high = 'models/world/high/'+PLYTKA+'_high'+'.glb';
+            let name_low = 'models/world/low/'+PLYTKA+'_low'+'.glb';
+            let name_collider = 'models/world/colliders/'+PLYTKA+'_collider'+'.glb';
             
             //---draw---
-            new ModelLoader(model_high, (mh) => {
-            new ModelLoader(model_low, (ml) => {
-            new ModelLoader(model_collider, (mc) => {
                 
-                
-                let model_high = mh.scene;
-                let model_low = ml.scene;
-                let model_collider = mc.scene;
+                let model_high = await this._Loader.loadModel(name_high);
+                let model_low = await this._Loader.loadModel(name_low);
+                let model_collider = await this._Loader.loadModel(name_collider);
+				
+                console.log(model_high);
+				model_high = model_high.scene;
+				model_low = model_low.scene;
+                model_collider = model_collider.scene;
+				
                 
                 model_high.name = "high";
                 model_low.name = "low";
                 model_collider.name = "collider";
                 
                 this._renderedColliders.add(model_collider.clone());
-                
-                /*let ground_high = model_high.children[0];
-                let tower_high = model_high.children[1];
-                
-                let ground_low = model_low.children[0];
-                let tower_low = model_low.children[1];*/
                 
                     model_high.traverse((node) => {
                         if(node.isMesh) {
@@ -828,45 +893,6 @@ class BasicWorldDemo{
                             node.material.flatShading = true;
                         }
                     });
-                    /*ground_high.traverse((node) => {
-                        if(node.isMesh) {
-                            node.geometry.computeVertexNormals();
-                            node.receiveShadow = true;
-                            
-                            node.material.flatShading = false;
-                            node.material.roughness = 0.7;
-                            
-                        }
-                    });
-                    
-                    tower_high.traverse((node) => {
-                        if(node.isMesh) {
-                            
-                            node.geometry.computeVertexNormals();
-                            node.receiveShadow = true;
-                            node.castShadow = true;
-                            
-                            node.material.envMap = this._city_reflection;
-                            node.material.flatShading = false;
-                            node.material.roughness = 0; //0.3
-                            node.material.metalic = 1;
-                            
-                        }
-                    });
-                    
-                    ground_low.traverse((node) => {
-                        if(node.isMesh) {
-                            node.material.flatShading = true;
-                        }
-                    });
-                    
-                    tower_low.traverse((node) => {
-                        if(node.isMesh) {
-                            node.material.envMap = this._city_reflection;
-                            node.material.flatShading = true;
-                        }
-                    });*/
-                    
                     
                  /* STANDARD RENDERING */
                     
@@ -1000,12 +1026,10 @@ class BasicWorldDemo{
                     
                     this._settings.gameReady = true;
                 }
-            });
-            });
-            });
+
 			
  
-        });
+        }));
         
         	
         

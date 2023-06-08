@@ -11,17 +11,16 @@ const loader = new GLTFLoader();
 dracoLoader.setDecoderPath( 'https://cdn.jsdelivr.net/npm/three@0.150.0/examples/jsm/libs/draco/gltf/' );
 //dracoLoader.setDecoderPath( './jsm_backup/draco_gltf/' );
 
-var ModelLoader = function(glb, callback) {
-
-        loader.setDRACOLoader( dracoLoader );
-
-        loader.load(glb, (model) => {
-                //model.preload();
-                
-                callback(model);
-            
-        });
-         
+class ModelLoader {
+  constructor() {
+    loader.setDRACOLoader(dracoLoader);
 }
+
+  async loadModel(glb) {
+    let data = await loader.loadAsync(glb);
+    return data;
+  }
+}
+
 
 export {ModelLoader};
