@@ -6,6 +6,7 @@ import {PointerLockControls} from 'PointerLockControls';
 
 import {ModelLoader} from 'modelLoader';
 
+//import GUI from 'lil-gui';
 
 import { MeshBVH ,computeBoundsTree, disposeBoundsTree, acceleratedRaycast, MeshBVHVisualizer, StaticGeometryGenerator } from 'three-mesh-bvh';
 
@@ -392,6 +393,18 @@ class BasicWorldDemo{
         Collid.checked = this._settings.colliders;
         debug.appendChild(Collid);
         
+        debug.innerHTML += "<br>Visible vertices: ";
+        const vertvis_count = document.createElement("span");
+        vertvis_count.id = "vertvis_count";
+        debug.appendChild(vertvis_count);
+        /*debug.innerHTML += "<br>Visible faces: ";
+        const facevis_count = document.createElement("p");
+        debug.appendChild(vertvis);*/
+        debug.innerHTML += "<br>Rendered vertices: ";
+        const vert_count = document.createElement("span");
+        vert_count.id = "vert_count";
+        debug.appendChild(vert_count);
+        
         
         
         document.addEventListener("input", (e) => {
@@ -532,6 +545,40 @@ class BasicWorldDemo{
     
     _RAF()
     {
+        let vertexCount = 0;
+        let renderedVert = 0;
+        
+        const frustum = new THREE.Frustum();
+        frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this._camera.projectionMatrix, this._camera.matrixWorldInverse));
+
+        this._scene.traverse(function (object) {
+            
+                if (object.isLOD){
+                    object.children[object._currentLevel].traverse((lod) => {
+                        if(lod.isMesh){
+                            if (frustum.intersectsObject(lod))
+                                vertexCount += lod.geometry.getAttribute('position').count
+
+                            };
+                        });
+                }
+
+            /*
+            else if (object.isMesh){
+                if (frustum.intersectsObject(object)) {
+                   vertexCount += object.geometry.getAttribute('position').count;
+                
+                }
+            }
+            */
+            if (object.isMesh)
+                renderedVert += object.geometry.getAttribute('position').count;
+          
+        });
+        
+        document.getElementById('vertvis_count').innerHTML = vertexCount;
+        document.getElementById('vert_count').innerHTML = renderedVert;
+                
         this._stats.update();
         //const delta = Math.min( this._clock.getDelta(), 0.1 );
         const delta = Math.min( this._clock.getDelta(), 0.1 );
